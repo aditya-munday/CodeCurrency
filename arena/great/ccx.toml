@@ -1,0 +1,5 @@
+# CodeCurrency solution.
+problem = "../../problems/sorted-pair-sum"
+language = "cpp"
+toolchain = "gcc"
+opt_level = "-O2"

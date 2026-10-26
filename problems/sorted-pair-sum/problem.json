@@ -1,0 +1,13 @@
+{
+  "id": "sorted-pair-sum",
+  "title": "Count pairs summing to at most T",
+  "category": "sorting",
+  "difficulty": "easy",
+  "ranked_metric": "instructions",
+  "summary": "Given n integers and a threshold T, count pairs (i, j) with i < j and a[i] + a[j] <= T. The naive double loop is O(n^2) and destroys the cache; sorting plus two pointers is O(n log n). The instruction count separates them by orders of magnitude, which makes this the clearest first problem.",
+  "limits": { "time_ms": 10000, "memory_bytes": 536870912, "output_bytes": 1048576 },
+  "seeds": { "public": [1, 2, 3], "hidden": [900000001, 900000002] },
+  "reference_language": "cpp",
+  "judge": "exact",
+  "sizes": { "naive": 800, "good": 20000, "great": 200000 }
+}

@@ -1,0 +1,20 @@
+[package]
+name = "ccx-cli"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "CodeCurrency command-line interface"
+
+[[bin]]
+name = "ccx"
+path = "src/main.rs"
+
+[dependencies]
+ccx-core = { path = "../ccx-core" }
+anyhow.workspace = true
+clap.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+toml = "0.8"

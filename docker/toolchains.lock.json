@@ -1,0 +1,26 @@
+{
+  "base_image": "debian:13-slim",
+  "base_digest": "sha256:62bd423aeee912639ca8ee681c2b762cb3e25137e0a92b20be455898a9f034ad",
+  "generated_by": "scripts/pin-toolchains.sh",
+  "harness_sha256": "968c012d24b1a290b28a0910138b473c6c29d4c4dded06a7d4c54f9ecff17cf0",
+  "toolchains": [
+    {
+      "name": "gcc",
+      "version": "14.2.0",
+      "image": "ccx-gcc",
+      "image_digest": "sha256:f6d91c0fb2954ed0ad51d547f8b7b74351a866f5ace727771a2b991028333c18",
+      "libc": "glibc 2.41",
+      "compiler": "gcc",
+      "compiler_sha256": "504654c1bd734fbd5b35571f51a77279e1350942e285b19be277344d2186f679"
+    },
+    {
+      "name": "clang",
+      "version": "19.1.7",
+      "image": "ccx-clang",
+      "image_digest": "sha256:b501771219f36a86f8c6ee24535d52e496c401bb2bdf20b77762c758f38b1d4b",
+      "libc": "glibc 2.41",
+      "compiler": "clang",
+      "compiler_sha256": "5a69616b5f14cf527a2b93a25e679d4f3ff98d9d4b25ffebd3e345e7895609a4"
+    }
+  ]
+}

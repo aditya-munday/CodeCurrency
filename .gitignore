@@ -1,0 +1,4 @@
+/target
+**/.ccx/
+**/capsule.json
+*.o
