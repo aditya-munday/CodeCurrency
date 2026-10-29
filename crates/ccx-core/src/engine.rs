@@ -566,7 +566,9 @@ impl Docker {
 
     /// The image reference for a toolchain, pinned by digest.
     pub fn image_ref(tc: &Toolchain) -> String {
-        format!("{}@{}", tc.image, tc.image_digest)
+        tc.image_id
+            .clone()
+            .unwrap_or_else(|| format!("{}@{}", tc.image, tc.image_digest))
     }
 
     /// Run a container to completion and copy `guest_path` out to `host_path`.
@@ -994,13 +996,20 @@ mod tests {
             name: crate::capsule::ToolchainName::Gcc,
             version: "14.2.0".into(),
             image: "ccx-gcc".into(),
-            image_digest: "sha256:abc".into(),
+            image_digest: "sha256:manifest".into(),
+            image_id: Some("sha256:local".into()),
             environment_fingerprint: "sha256:abc".into(),
             libc: "glibc 2.41".into(),
             compiler: "gcc".into(),
             compiler_binaries: vec!["/usr/bin/gcc".into(), "/usr/bin/g++".into()],
             compiler_sha256: "a".repeat(64),
         };
-        assert_eq!(Docker::image_ref(&tc), "ccx-gcc@sha256:abc");
+        assert_eq!(Docker::image_ref(&tc), "sha256:local");
+        let mut registry_image = tc.clone();
+        registry_image.image_id = None;
+        assert_eq!(
+            Docker::image_ref(&registry_image),
+            "ccx-gcc@sha256:manifest"
+        );
     }
 }

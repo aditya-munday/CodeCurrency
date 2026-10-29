@@ -17,6 +17,8 @@ pub struct Toolchain {
     pub image: String,
     pub image_digest: String,
     #[serde(default)]
+    pub image_id: Option<String>,
+    #[serde(default)]
     pub environment_fingerprint: String,
     pub libc: String,
     /// Compiler binary invoked inside the image.

@@ -172,7 +172,7 @@ impl<'a> Pipeline<'a> {
         Ok(Pipeline {
             sol,
             docker,
-            image: format!("{}@{}", tc.image, tc.image_digest),
+            image: Docker::image_ref(&tc),
             work_dir,
             source_dir,
         })

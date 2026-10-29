@@ -81,6 +81,9 @@ fi
 if [[ -z "$rust_digest" ]]; then
   rust_digest="ccx-rust@$(docker inspect --format='{{.Id}}' "$RUST_TAG")"
 fi
+gcc_image_id=$(docker inspect --format='{{.Id}}' "$GCC_TAG")
+clang_image_id=$(docker inspect --format='{{.Id}}' "$CLANG_TAG")
+rust_image_id=$(docker inspect --format='{{.Id}}' "$RUST_TAG")
 
 gcc_version=$(docker run --rm --entrypoint gcc "$GCC_TAG" -dumpfullversion -dumpversion | head -1)
 gcc13_version=$(docker run --rm --entrypoint gcc-13 "$GCC_TAG" -dumpfullversion -dumpversion | head -1)
@@ -119,13 +122,13 @@ clang_harness_sha=$(docker run --rm --entrypoint sha256sum "$CLANG_TAG" /opt/ccx
 rust_harness_sha=$(docker run --rm --entrypoint sha256sum "$RUST_TAG" /opt/ccx/runner /opt/ccx/batch-runner /opt/ccx/alloc_shim.o | sha256sum | cut -d' ' -f1)
 
 mkdir -p docker
-python3 - "$gcc_digest" "$clang_digest" "$rust_digest" "$gcc_version" "$gcc13_version" "$clang_version" "$clang18_version" "$rust_version" "$gdc_version" "$zig_version" "$odin_version" "$go_version" "$cmake_version" "$ninja_version" "$make_version" "$libc_version" "$BASE_DIGEST" "$DEBIAN_SNAPSHOT" "$gcc_sha" "$gcc13_sha" "$clang_sha" "$clang18_sha" "$rust_sha" "$gdc_sha" "$zig_sha" "$odin_sha" "$go_sha" "$cmake_sha" "$ninja_sha" "$make_sha" "$harness_sha" "$clang_harness_sha" "$rust_harness_sha" "$ZIG_SHA256" "$ODIN_SHA256" "$GO_SHA256" <<'PY'
+python3 - "$gcc_digest" "$clang_digest" "$rust_digest" "$gcc_version" "$gcc13_version" "$clang_version" "$clang18_version" "$rust_version" "$gdc_version" "$zig_version" "$odin_version" "$go_version" "$cmake_version" "$ninja_version" "$make_version" "$libc_version" "$BASE_DIGEST" "$DEBIAN_SNAPSHOT" "$gcc_sha" "$gcc13_sha" "$clang_sha" "$clang18_sha" "$rust_sha" "$gdc_sha" "$zig_sha" "$odin_sha" "$go_sha" "$cmake_sha" "$ninja_sha" "$make_sha" "$harness_sha" "$clang_harness_sha" "$rust_harness_sha" "$ZIG_SHA256" "$ODIN_SHA256" "$GO_SHA256" "$gcc_image_id" "$clang_image_id" "$rust_image_id" <<'PY'
 import hashlib, json, pathlib, sys
 (gcc_digest, clang_digest, rust_digest, gcc_version, gcc13_version, clang_version, clang18_version, rust_version,
  gdc_version, zig_version, odin_version, go_version, cmake_version, ninja_version, make_version,
  libc_version, base_digest, debian_snapshot, gcc_sha, gcc13_sha, clang_sha, clang18_sha, rust_sha, gdc_sha,
  zig_sha, odin_sha, go_sha, cmake_sha, ninja_sha, make_sha, harness_sha, clang_harness_sha, rust_harness_sha,
- zig_archive_sha, odin_archive_sha, go_archive_sha) = sys.argv[1:37]
+ zig_archive_sha, odin_archive_sha, go_archive_sha, gcc_image_id, clang_image_id, rust_image_id) = sys.argv[1:40]
 
 def split_digest(ref):
     image, _, digest = ref.partition("@")
@@ -228,6 +231,7 @@ lock = {
             "version": gcc_version,
             "image": gcc_image,
             "image_digest": gcc_sha_img,
+            "image_id": gcc_image_id,
             "environment_fingerprint": gcc_environment,
             "libc": libc_version,
             "compiler": "gcc",
@@ -239,6 +243,7 @@ lock = {
             "version": gcc13_version,
             "image": gcc_image,
             "image_digest": gcc_sha_img,
+            "image_id": gcc_image_id,
             "environment_fingerprint": gcc_environment,
             "libc": libc_version,
             "compiler": "gcc-13",
@@ -250,6 +255,7 @@ lock = {
             "version": clang_version,
             "image": clang_image,
             "image_digest": clang_sha_img,
+            "image_id": clang_image_id,
             "environment_fingerprint": clang_environment,
             "libc": libc_version,
             "compiler": "clang",
@@ -261,6 +267,7 @@ lock = {
             "version": clang18_version,
             "image": clang_image,
             "image_digest": clang_sha_img,
+            "image_id": clang_image_id,
             "environment_fingerprint": clang_environment,
             "libc": libc_version,
             "compiler": "clang-18",
@@ -272,6 +279,7 @@ lock = {
             "version": rust_version,
             "image": rust_image,
             "image_digest": rust_sha_img,
+            "image_id": rust_image_id,
             "environment_fingerprint": rust_environment,
             "libc": libc_version,
             "compiler": "rustc",
@@ -283,6 +291,7 @@ lock = {
             "version": gdc_version,
             "image": gcc_image,
             "image_digest": gcc_sha_img,
+            "image_id": gcc_image_id,
             "environment_fingerprint": gcc_environment,
             "libc": libc_version,
             "compiler": "gdc-14",
@@ -294,6 +303,7 @@ lock = {
             "version": zig_version,
             "image": gcc_image,
             "image_digest": gcc_sha_img,
+            "image_id": gcc_image_id,
             "environment_fingerprint": gcc_environment,
             "libc": libc_version,
             "compiler": "zig",
@@ -305,6 +315,7 @@ lock = {
             "version": odin_version,
             "image": clang_image,
             "image_digest": clang_sha_img,
+            "image_id": clang_image_id,
             "environment_fingerprint": clang_environment,
             "libc": libc_version,
             "compiler": "odin",
@@ -316,6 +327,7 @@ lock = {
             "version": go_version,
             "image": gcc_image,
             "image_digest": gcc_sha_img,
+            "image_id": gcc_image_id,
             "environment_fingerprint": gcc_environment,
             "libc": libc_version,
             "compiler": "go",

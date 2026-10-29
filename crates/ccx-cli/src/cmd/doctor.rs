@@ -88,7 +88,7 @@ pub fn run(format: Format) -> anyhow::Result<()> {
     ] {
         match toolchain::pinned(name) {
             Some(tc) => {
-                let image_ref = format!("{}@{}", tc.image, tc.image_digest);
+                let image_ref = Docker::image_ref(&tc);
                 let present = docker_ok
                     && docker
                         .run(&["image".into(), "inspect".into(), image_ref.clone()])
@@ -226,7 +226,7 @@ pub fn run(format: Format) -> anyhow::Result<()> {
                 "--rm".into(),
                 "--entrypoint".into(),
                 binary.into(),
-                format!("{}@{}", gcc.image, gcc.image_digest),
+                Docker::image_ref(gcc),
                 "--version".into(),
             ]),
             _ => Err(ccx_core::engine::EngineError::Other(
@@ -250,7 +250,7 @@ pub fn run(format: Format) -> anyhow::Result<()> {
                 "--rm".into(),
                 "--entrypoint".into(),
                 "sha256sum".into(),
-                format!("{}@{}", gcc.image, gcc.image_digest),
+                Docker::image_ref(gcc),
                 format!("/usr/bin/{binary}"),
             ]),
             _ => Err(ccx_core::engine::EngineError::Other(
@@ -302,7 +302,7 @@ pub fn run(format: Format) -> anyhow::Result<()> {
                         "--rm".into(),
                         "--entrypoint".into(),
                         "valgrind".into(),
-                        format!("{}@{}", tc.image, tc.image_digest),
+                        Docker::image_ref(&tc),
                         "--version".into(),
                     ])
                     .map(|(s, _, _)| s == 0)
@@ -424,7 +424,7 @@ fn probe_hardware_counters(
         return None;
     }
     let tc = toolchain::pinned(ToolchainName::Gcc)?;
-    let image = format!("{}@{}", tc.image, tc.image_digest);
+    let image = Docker::image_ref(&tc);
     let args = [
         "run",
         "--rm",

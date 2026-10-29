@@ -38,7 +38,7 @@ int main(void) {
 }
 C
 gcc -O2 -o "$work/xtree-probe" "$work/xtree-probe.c"
-image="ccx-gcc@$(jq -r '.toolchains[] | select(.name=="gcc") | .image_digest' "$repo_root/docker/toolchains.lock.json")"
+image="$(jq -r '.toolchains[] | select(.name=="gcc") | if .image_id then .image_id else "\(.image)@\(.image_digest)" end' "$repo_root/docker/toolchains.lock.json")"
 docker_args=(
     --rm --network=none --user 65534:65534 --read-only
     --tmpfs /work/scratch:rw,size=64m,mode=1777
