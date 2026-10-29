@@ -166,6 +166,8 @@ Dockerfile. Toolchain image digests and compiler fingerprints are regenerated
 by `scripts/pin-toolchains.sh` after an intentional toolchain change.
 CMake 3.31.6 and Ninja 1.12.1 are pinned as build tools in the GCC and Clang
 images and recorded in the toolchain lock.
+Zig builds explicitly target `x86_64-linux-gnu` with `-mcpu=baseline`, so the
+host CPU model cannot silently change the generated executable.
 
 `ccx doctor` runs every pinned compiler in its image and verifies its exact
 version and the locked compiler-binary fingerprint, in addition to checking

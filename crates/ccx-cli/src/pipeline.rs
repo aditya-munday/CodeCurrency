@@ -21,6 +21,14 @@ pub fn extension_for(language: ccx_core::capsule::Language) -> &'static str {
     ccx_core::toolchain::extension(language)
 }
 
+fn zig_target_flags() -> Vec<String> {
+    vec![
+        "-target".to_string(),
+        "x86_64-linux-gnu".to_string(),
+        "-mcpu=baseline".to_string(),
+    ]
+}
+
 /// Guest path where a compiled program's directory is mounted read-only.
 const GUEST_PROG: &str = "/prog";
 /// Guest path where test input is mounted read-only.
@@ -838,12 +846,14 @@ impl<'a> Pipeline<'a> {
                     "-Os" | "-Oz" => "ReleaseSmall",
                     _ => "ReleaseFast",
                 };
+                let mut flags = vec![
+                    "build-exe".to_string(),
+                    format!("-O{mode}"),
+                    "-lc".to_string(),
+                ];
+                flags.extend(zig_target_flags());
                 (
-                    vec![
-                        "build-exe".to_string(),
-                        format!("-O{mode}"),
-                        "-lc".to_string(),
-                    ],
+                    flags,
                     vec![if self.source_dir.join("main.zig").is_file() {
                         self.source_dir.join("main.zig")
                     } else {
@@ -1094,12 +1104,14 @@ impl<'a> Pipeline<'a> {
                     "-Os" | "-Oz" => "ReleaseSmall",
                     _ => "ReleaseFast",
                 };
+                let mut flags = vec![
+                    "build-exe".to_string(),
+                    format!("-O{mode}"),
+                    "-lc".to_string(),
+                ];
+                flags.extend(zig_target_flags());
                 (
-                    vec![
-                        "build-exe".to_string(),
-                        format!("-O{mode}"),
-                        "-lc".to_string(),
-                    ],
+                    flags,
                     vec![if self.source_dir.join("main.zig").is_file() {
                         self.source_dir.join("main.zig")
                     } else {
@@ -1493,6 +1505,9 @@ impl<'a> Pipeline<'a> {
                     "build-exe".to_string(),
                     format!("-O{mode}"),
                     "-lc".to_string(),
+                ]);
+                argv.extend(zig_target_flags());
+                argv.extend([
                     "--cache-dir".to_string(),
                     "/work/scratch/zig-cache".to_string(),
                     "--global-cache-dir".to_string(),
@@ -1926,7 +1941,7 @@ impl Drop for Pipeline<'_> {
 
 #[cfg(test)]
 mod tests {
-    use super::{Program, CACHEGRIND_ARGS};
+    use super::{zig_target_flags, Program, CACHEGRIND_ARGS};
     use std::path::PathBuf;
 
     #[test]
@@ -1952,6 +1967,14 @@ mod tests {
         assert!(!CACHEGRIND_ARGS
             .iter()
             .any(|argument| argument.starts_with("--LL=")));
+    }
+
+    #[test]
+    fn zig_builds_pin_linux_x86_64_baseline_target() {
+        assert_eq!(
+            zig_target_flags(),
+            vec!["-target", "x86_64-linux-gnu", "-mcpu=baseline"]
+        );
     }
 
     #[test]
