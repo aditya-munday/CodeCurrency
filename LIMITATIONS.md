@@ -22,14 +22,15 @@ known gaps in the expanded Phase 1 target:
   the pinned build environment. Replay accepts a locally rebuilt image only
   when its base, package snapshot, Dockerfile, tool binaries, archives, and
   harness fingerprint match. Pullable image distribution remains outstanding.
-- CI is configured to compile and unit-test the native CLI on Linux, Windows,
-  and macOS, but no hosted workflow run is recorded yet. Docker build, mount,
-  execution, and replay behavior has been validated locally on x86-64 Linux
-  under WSL2. Cross-target `cargo check --workspace --all-targets` passes with
-  warnings denied for Windows x86-64 and macOS Intel and Apple Silicon using
-  Rust 1.97.1, but does not replace native hosted tests. Windows and macOS
-  Docker Desktop integration runs remain outstanding; Apple Silicon also needs
-  certified amd64 emulation or native arm64 images.
+- The hosted native CLI matrix passed on Ubuntu 24.04, Windows Server 2022,
+  macOS 15 Intel, and macOS 14 Apple Silicon using Rust 1.85.1. Docker build,
+  mount, execution, and replay behavior has been validated locally on x86-64
+  Linux under WSL2 and in the hosted Ubuntu container workflow. Cross-target
+  `cargo check --workspace --all-targets` also passes with warnings denied for
+  Windows x86-64 and macOS Intel and Apple Silicon using Rust 1.97.1, but does
+  not replace native hosted tests. Windows and macOS Docker Desktop integration
+  runs remain outstanding; Apple Silicon also needs certified amd64 emulation or
+  native arm64 images.
 - CMake builds are currently supported only for C and C++. A project must
   define an executable target named `ccx_solution`; other target names and
   custom multi-configuration generators are not supported.
@@ -96,15 +97,16 @@ known gaps in the expanded Phase 1 target:
 - Special checkers run as sandboxed programs with input, expected, and actual
   output paths. Checker authors still need to validate that their checker
   rejects malformed and adversarial output.
-- The local repeatability report is available. CI now measures one C++ case
-  twenty times on three independent hosted runner environments and compares all
-  deterministic metrics exactly; it also requires both executable SHA-256
-  values and the reference compiler argv to match. The host fingerprint records
-  the machine class and may match across independent hosted runners.
+- The local repeatability report is available. Hosted CI measured one C++ case
+  twenty times on Ubuntu 22.04, 24.04, and 26.04 runners and replayed all three
+  capsules successfully. Deterministic metrics matched exactly, the within-host
+  spread stayed below 0.01%, and both executable SHA-256 values plus the
+  reference compiler argv matched. The host fingerprint records the machine
+  class and may match across independent hosted runners.
   All ten current harness-0.18.0 single- and multi-file language capsules replayed
   with deterministic metrics matching on the local WSL2 host.
-  The cross-host result remains unverified until that workflow has completed
-  successfully; these are hosted VMs, not three bare-metal CPU models.
+  These are hosted VMs, not three bare-metal CPU models, and this run does not
+  certify every CPU microarchitecture.
 - Paired wall-clock samples compare every solution with the problem's C++
   reference. For Rust, D, Zig, Odin, and Go this is cross-language context, not
   a same-language ranking signal. Wall-clock remains indicative and noisy; the

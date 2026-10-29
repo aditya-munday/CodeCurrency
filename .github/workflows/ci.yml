@@ -67,6 +67,7 @@ jobs:
       - run: target/release/ccx init --problem sorted-pair-sum --language cpp --toolchain gcc --build-system cmake --dir arena/cmake-ci --format json
       - run: target/release/ccx build --dir arena/cmake-ci --format json
       - run: target/release/ccx init --problem sorted-pair-sum --language cpp --toolchain gcc --build-system custom --dir arena/custom-command-ci --run-command-arg env --run-command-arg CCX_RUN=1 --run-command-arg '{binary}' --run-command-arg '{args}' --format json
+      - run: cp arena/good/main.cpp arena/custom-command-ci/main.cpp
       - run: target/release/ccx build --dir arena/custom-command-ci --format json
       - run: target/release/ccx test --dir arena/custom-command-ci --hidden --format json
       - run: target/release/ccx init --problem sorted-pair-sum --language c --toolchain clang --build-system cmake --dir arena/cmake-clang-ci --format json

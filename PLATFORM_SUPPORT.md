@@ -4,18 +4,19 @@
 
 | Host | Native CLI and unit tests | Container builds and measurements | Current validation |
 | --- | --- | --- | --- |
-| Ubuntu 22.04 or 24.04, x86-64 | CI target configured; hosted run unverified | Linux Docker workflow configured | No hosted workflow run recorded |
-| Ubuntu 26.04 under WSL 2, x86-64 | Locally exercised | Verified with Docker Desktop Linux containers | Local build, test, experiment, replay, and CMake build paths exercised |
-| Windows 11, x86-64 | CI target configured; hosted run unverified | Intended through Docker Desktop in Linux-container mode with WSL 2; bind-mount and executable-bit behavior needs a Windows integration run | No hosted workflow run recorded |
-| macOS 15 Intel, x86-64 | CI target configured; hosted run unverified | Intended through Docker Desktop; bind-mount and executable-bit behavior needs a macOS integration run | No hosted workflow run recorded |
-| macOS 14 Apple Silicon, arm64 | CI target configured; hosted run unverified | Pinned language images are x86-64; amd64 emulation is not certified | No hosted workflow run recorded |
+| Ubuntu 22.04 or 24.04, x86-64 | Hosted CLI tests passed on Ubuntu 24.04 | Linux Docker workflow exercised on Ubuntu 24.04 | 20-run measurement and capsule replay passed on Ubuntu 22.04 and 24.04 |
+| Ubuntu 26.04 under WSL 2, x86-64 | Locally exercised | Verified with Docker Desktop Linux containers | Local build, test, experiment, replay, and CMake paths exercised; hosted repeatability passed |
+| Windows 11, x86-64 | Hosted CLI tests passed on Windows Server 2022 | Docker Desktop Linux-container integration remains unverified | Native build, test, and formatting checks passed in CI |
+| macOS 15 Intel, x86-64 | Hosted CLI tests passed on macOS 15 Intel | Docker Desktop integration remains unverified | Native build, test, and formatting checks passed in CI |
+| macOS 14 Apple Silicon, arm64 | Hosted CLI tests passed on macOS 14 | Pinned language images are x86-64; amd64 emulation is not certified | Native build, test, and formatting checks passed in CI |
 
 The container is the execution environment on every host. Windows submissions
 use Linux containers, not Windows containers. Keep Windows checkouts inside the
 WSL 2 filesystem when using Docker Desktop. Linux source trees must be available
 to the selected Docker context as read-only bind mounts. Container execution
-has only been end-to-end verified on x86-64 Linux so far; the other host rows
-describe configured CI targets and the remaining Docker Desktop checks.
+has only been end-to-end verified on x86-64 Linux so far. Hosted native CLI
+checks pass on Windows and macOS, but their Docker Desktop integration remains
+unverified.
 
 From the Linux development host, `cargo check --workspace --all-targets` with
 `RUSTFLAGS=-D warnings` passed for `x86_64-pc-windows-gnu`,
@@ -40,12 +41,12 @@ from a fixed Debian 13 base digest and the recorded Debian package snapshot.
 | Odin | `dev-2026-10-nightly:84bc3fc` | `toolchain = "odin"` |
 | Go | Go 1.26.10 | `toolchain = "go"` |
 
-The CLI workspace declares Rust 1.85 as its minimum version. The CI workflow is
-configured to use Rust 1.85.1 on Linux, Windows, and macOS; no hosted workflow
-run is recorded yet. The C, C++, Rust, D, Zig, Odin, and Go submission builds
-run inside digest-pinned Linux images, so the host compiler installation is not
-used to build a measured solution. `ccx asm` emits assembly for these compiled
-submissions; assembly is not a selectable language profile.
+The CLI workspace declares Rust 1.85 as its minimum version. The hosted native
+CI matrix passed with Rust 1.85.1 on Ubuntu 24.04, Windows Server 2022, macOS 15
+Intel, and macOS 14 Apple Silicon. The C, C++, Rust, D, Zig, Odin, and Go
+submission builds run inside digest-pinned Linux images, so the host compiler
+installation is not used to build a measured solution. `ccx asm` emits assembly
+for these compiled submissions; assembly is not a selectable language profile.
 
 Pinned CMake projects use CMake 3.31.6 and can select Ninja 1.12.1 or GNU Make
 4.4.1 from the same Debian snapshot. Versions and binary hashes are recorded
