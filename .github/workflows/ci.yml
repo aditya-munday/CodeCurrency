@@ -53,6 +53,7 @@ jobs:
       - run: target/release/ccx asm --dir arena/multi-file --format json
       - run: target/release/ccx measure --dir arena/multi-file --size good --seed 42 --repeat 2 --format json
       - run: target/release/ccx replay arena/multi-file/capsule.json --format json
+      - run: target/release/ccx replay evidence/sorted-pair-sum-great.json --dir arena/great --format json | python3 -c "import json,sys; r=json.load(sys.stdin); assert r['reproduced'] and r['deterministic_match']"
       - run: target/release/ccx matrix --dir arena/multi-file --toolchain gcc --build-system cmake --cmake-generator ninja --cmake-generator make --size good --seed 42 --repeat 2 --format json
       - run: target/release/ccx matrix --dir arena/multi-file --toolchain gcc --toolchain gcc-13 --toolchain clang --toolchain clang-18 --size good --seed 42 --repeat 2 --format table
       - run: target/release/ccx build --dir arena/c-multifile --format json

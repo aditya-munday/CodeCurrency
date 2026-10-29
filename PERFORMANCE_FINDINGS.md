@@ -126,3 +126,53 @@ target/release/ccx replay arena/naive/reproduced.json
 target/release/ccx replay arena/good/reproduced.json
 target/release/ccx diff arena/naive/reproduced.json arena/good/reproduced.json
 ```
+
+## A third approach: counting by value
+
+The [great source](arena/great/main.cpp) uses the problem's value bound
+`0 <= a[i] <= 2n` to count frequencies and build a prefix sum instead of
+sorting. Its schema-14, harness-0.18.0 capsule is
+[available here](evidence/sorted-pair-sum-great.json). It uses the exact same
+public seed `1`, size `800`, stdin SHA-256, GCC 14.2.0 image, and host as the
+naive and good capsules above. It records twenty samples, three byte-identical
+builds, and its measurement report marked instructions eligible with 0.00%
+spread. The capsule ID is
+`ee42b45f21990ff8e2abefd943b6ef6c86a31d8732bd84512c678e586cfa102a`.
+
+| Metric | Sort and two pointers | Count and prefix sum | Change |
+| --- | ---: | ---: | ---: |
+| Instructions | 2,506,969 | 2,480,374 | −1.06% |
+| Memory references | 3,409,423 | 3,375,295 | −1.00% |
+| Branches | 407,255 | 402,480 | −1.17% |
+| Branch misses | 18,868 | 15,782 | −16.36% |
+| Cache misses | 17,708 | 18,239 | +3.00% |
+| Allocations | 4 | 6 | +50% |
+| Allocated bytes | 88,320 | 113,904 | +28.97% |
+| Binary size | 16,904 B | 16,672 B | −1.37% |
+
+The deterministic counters show a small instruction reduction and fewer branch
+misses, alongside more cache misses and allocation traffic. The source-mapped
+assembly identifies the frequency fill and prefix passes at
+[`main.cpp:27`](arena/great/main.cpp#L27) and
+[`main.cpp:34`](arena/great/main.cpp#L34); the quadratic pair loop is absent.
+On this small input, the extra frequency and prefix storage consumes much of
+the asymptotic advantage. This is evidence for choosing an algorithm based on
+the input bounds and scale, not evidence that counting is always faster.
+
+The Great candidate's wall-clock median was `1.793 ms ± 0.263 ms`; the good
+candidate measured `1.904 ms ± 0.441 ms`. The confidence intervals overlap,
+and `ccx diff` classifies the paired-ratio change as `within_noise`, so this
+does not establish a wall-clock winner. The instruction and branch counters
+are the supported deterministic comparison for this result.
+
+The saved capsule replayed on its recording host with both
+`deterministic_match: true` and `machine_dependent_match: true`. Reproduce the
+measurement, replay, and diff with:
+
+```sh
+target/release/ccx measure --dir arena/great --size naive --seed 1 --repeat 20 \
+  --out evidence/sorted-pair-sum-great.json
+target/release/ccx replay evidence/sorted-pair-sum-great.json --dir arena/great
+target/release/ccx diff arena/good/capsule.phase1.v0.18.json \
+  evidence/sorted-pair-sum-great.json
+```
