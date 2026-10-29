@@ -58,13 +58,13 @@ cp "$ODIN_CACHE" "$TOOLCHAIN_BUILD_CONTEXT/$(basename "$ODIN_ARCHIVE")"
 cp "$GO_CACHE" "$TOOLCHAIN_BUILD_CONTEXT/$(basename "$GO_ARCHIVE")"
 
 echo "==> building $GCC_TAG"
-docker build -q --build-arg "DEBIAN_SNAPSHOT=$DEBIAN_SNAPSHOT" -f "$TOOLCHAIN_BUILD_CONTEXT/gcc.Dockerfile" -t "$GCC_TAG" "$TOOLCHAIN_BUILD_CONTEXT" >/dev/null
+docker build --build-arg "DEBIAN_SNAPSHOT=$DEBIAN_SNAPSHOT" -f "$TOOLCHAIN_BUILD_CONTEXT/gcc.Dockerfile" -t "$GCC_TAG" "$TOOLCHAIN_BUILD_CONTEXT"
 
 echo "==> building $CLANG_TAG"
-docker build -q --build-arg "DEBIAN_SNAPSHOT=$DEBIAN_SNAPSHOT" -f "$TOOLCHAIN_BUILD_CONTEXT/clang.Dockerfile" -t "$CLANG_TAG" "$TOOLCHAIN_BUILD_CONTEXT" >/dev/null
+docker build --build-arg "DEBIAN_SNAPSHOT=$DEBIAN_SNAPSHOT" -f "$TOOLCHAIN_BUILD_CONTEXT/clang.Dockerfile" -t "$CLANG_TAG" "$TOOLCHAIN_BUILD_CONTEXT"
 
 echo "==> building $RUST_TAG"
-docker build -q --build-arg "DEBIAN_SNAPSHOT=$DEBIAN_SNAPSHOT" -f "$TOOLCHAIN_BUILD_CONTEXT/rust.Dockerfile" -t "$RUST_TAG" "$TOOLCHAIN_BUILD_CONTEXT" >/dev/null
+docker build --build-arg "DEBIAN_SNAPSHOT=$DEBIAN_SNAPSHOT" -f "$TOOLCHAIN_BUILD_CONTEXT/rust.Dockerfile" -t "$RUST_TAG" "$TOOLCHAIN_BUILD_CONTEXT"
 
 gcc_digest=$(docker inspect --format='{{index .RepoDigests 0}}' "$GCC_TAG" 2>/dev/null || true)
 clang_digest=$(docker inspect --format='{{index .RepoDigests 0}}' "$CLANG_TAG" 2>/dev/null || true)
