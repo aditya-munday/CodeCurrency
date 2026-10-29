@@ -106,6 +106,12 @@ evidence.
 The combined report labels pairwise ranked-metric differences within twice the
 combined 95% confidence half-width as `within_noise`; it is a same-host
 comparison aid, not a cross-host significance test or ranking.
+The measurement report marks a ranked metric eligible only when it is
+machine-independent and its observed spread is at most 0.01%. Matrix pairwise
+comparisons are withheld when either profile fails that check. This is a
+same-host repeatability gate; cross-host ranking still requires the separate
+multi-runner equality check, and the eligibility label does not make wall time
+or hardware counters comparable between machines.
 
 `ccx validate` checks generator determinism for every declared size and public
 and hidden seed, cross-checks brute force against the reference on the smallest

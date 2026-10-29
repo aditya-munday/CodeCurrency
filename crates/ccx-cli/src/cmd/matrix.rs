@@ -1,6 +1,7 @@
 use crate::cmd::{self, Fixable};
 use crate::context::{BuildSystem, CmakeGenerator, Solution};
 use crate::Format;
+use ccx_core::capsule::repeatability::RankingEligibility;
 use ccx_core::capsule::{Language, ToolchainName};
 use ccx_core::toolchain::pinned;
 use serde::Serialize;
@@ -27,6 +28,7 @@ pub struct MatrixProfile {
     pub capsule_id: String,
     pub input_sha256: String,
     pub ranked_metric: String,
+    pub rankability: RankingEligibility,
     pub ranked_value: Option<f64>,
     pub ranked_uncertainty: Option<f64>,
     pub metrics: Vec<super::measure::MetricSummary>,
@@ -172,6 +174,7 @@ pub fn run(
                     capsule_id: report.capsule_id,
                     input_sha256: report.input_sha256,
                     ranked_metric: report.ranked_metric,
+                    rankability: report.rankability,
                     ranked_value: ranked.map(|metric| metric.value),
                     ranked_uncertainty: ranked.and_then(|metric| metric.uncertainty),
                     metrics: report.metrics,
@@ -233,6 +236,16 @@ pub fn run(
                     value,
                     uncertainty
                 );
+                if !profile.rankability.eligible {
+                    println!(
+                        "    not rankable: {}",
+                        profile
+                            .rankability
+                            .reason
+                            .as_deref()
+                            .unwrap_or("repeatability has not been established")
+                    );
+                }
                 println!("    capsule {}", profile.capsule_path);
             }
             if !report.comparisons.is_empty() {
@@ -543,7 +556,9 @@ fn compare_profiles(profiles: &[MatrixProfile]) -> Vec<MatrixComparison> {
             let comparable = profile_a.ranked_metric == profile_b.ranked_metric
                 && profile_a.input_sha256 == profile_b.input_sha256
                 && profile_a.ranked_value.is_some()
-                && profile_b.ranked_value.is_some();
+                && profile_b.ranked_value.is_some()
+                && profile_a.rankability.eligible
+                && profile_b.rankability.eligible;
             let delta = comparable
                 .then(|| profile_b.ranked_value.unwrap() - profile_a.ranked_value.unwrap());
             let tolerance = comparable.then(|| {
@@ -588,10 +603,19 @@ fn profile_label(profile: &MatrixProfile) -> String {
 mod tests {
     use super::{
         compare_profiles, parse_toolchain, select_build_profiles, select_opt_levels,
-        toolchain_name, MatrixComparisonResult, MatrixProfile,
+        toolchain_name, MatrixComparisonResult, MatrixProfile, RankingEligibility,
     };
     use crate::context::{BuildSystem, CmakeGenerator};
     use ccx_core::capsule::{Language, ToolchainName};
+
+    fn rankability(eligible: bool) -> RankingEligibility {
+        RankingEligibility {
+            eligible,
+            tolerance_pct: 0.01,
+            observed_spread_pct: Some(if eligible { 0.0 } else { 1.0 }),
+            reason: (!eligible).then(|| "observed spread exceeds tolerance".into()),
+        }
+    }
 
     #[test]
     fn parses_pinned_compiler_profiles() {
@@ -687,7 +711,7 @@ mod tests {
 
     #[test]
     fn profile_comparison_reports_values_within_repeatability_noise_as_tied() {
-        let profiles = vec![
+        let mut profiles = vec![
             MatrixProfile {
                 toolchain: "gcc".into(),
                 compiler_version: "14.2.0".into(),
@@ -698,6 +722,7 @@ mod tests {
                 capsule_id: "a".into(),
                 input_sha256: "same-input".into(),
                 ranked_metric: "instructions".into(),
+                rankability: rankability(true),
                 ranked_value: Some(100.0),
                 ranked_uncertainty: Some(1.0),
                 metrics: Vec::new(),
@@ -712,6 +737,7 @@ mod tests {
                 capsule_id: "b".into(),
                 input_sha256: "same-input".into(),
                 ranked_metric: "instructions".into(),
+                rankability: rankability(true),
                 ranked_value: Some(102.0),
                 ranked_uncertainty: Some(1.0),
                 metrics: Vec::new(),
@@ -721,6 +747,11 @@ mod tests {
         let comparisons = compare_profiles(&profiles);
         assert_eq!(comparisons.len(), 1);
         assert_eq!(comparisons[0].result, MatrixComparisonResult::WithinNoise);
+        profiles[0].rankability = rankability(false);
+        assert_eq!(
+            compare_profiles(&profiles)[0].result,
+            MatrixComparisonResult::NotComparable
+        );
     }
 
     #[test]
@@ -736,6 +767,7 @@ mod tests {
                 capsule_id: "a".into(),
                 input_sha256: "input-a".into(),
                 ranked_metric: "instructions".into(),
+                rankability: rankability(true),
                 ranked_value: Some(100.0),
                 ranked_uncertainty: Some(1.0),
                 metrics: Vec::new(),
@@ -750,6 +782,7 @@ mod tests {
                 capsule_id: "b".into(),
                 input_sha256: "input-b".into(),
                 ranked_metric: "instructions".into(),
+                rankability: rankability(true),
                 ranked_value: Some(90.0),
                 ranked_uncertainty: Some(0.0),
                 metrics: Vec::new(),

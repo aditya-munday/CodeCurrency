@@ -4,8 +4,46 @@
 //! These helpers compute the spread that proves (or disproves) it, and the
 //! bootstrap confidence interval used for indicative wall-clock numbers.
 
-use super::{Spread, Uncertainty, UncertaintyKind};
+use super::{Metric, Spread, Uncertainty, UncertaintyKind};
+use serde::Serialize;
 use std::collections::BTreeMap;
+
+pub const DEFAULT_RANKING_SPREAD_TOLERANCE_PCT: f64 = 0.01;
+
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct RankingEligibility {
+    pub eligible: bool,
+    pub tolerance_pct: f64,
+    pub observed_spread_pct: Option<f64>,
+    pub reason: Option<String>,
+}
+
+pub fn ranking_eligibility(metric: Option<&Metric>, spread: Option<&Spread>) -> RankingEligibility {
+    let observed_spread_pct = spread.map(|value| value.spread_pct);
+    let reason = match (metric, spread) {
+        (None, _) => Some("ranked metric is absent".to_string()),
+        (Some(metric), _) if metric.machine_dependent() => {
+            Some("ranked metric depends on the host".to_string())
+        }
+        (_, None) => Some("repeatability spread is unavailable".to_string()),
+        (_, Some(spread)) if spread.samples < 2 => {
+            Some("at least two samples are required".to_string())
+        }
+        (_, Some(spread)) if spread.spread_pct > DEFAULT_RANKING_SPREAD_TOLERANCE_PCT => {
+            Some(format!(
+                "observed spread {:.4}% exceeds the {:.4}% tolerance",
+                spread.spread_pct, DEFAULT_RANKING_SPREAD_TOLERANCE_PCT
+            ))
+        }
+        _ => None,
+    };
+    RankingEligibility {
+        eligible: reason.is_none(),
+        tolerance_pct: DEFAULT_RANKING_SPREAD_TOLERANCE_PCT,
+        observed_spread_pct,
+        reason,
+    }
+}
 
 /// Median of a sample. Returns `None` for an empty sample.
 pub fn median(values: &[f64]) -> Option<f64> {
@@ -131,6 +169,67 @@ pub fn summarise(samples: &BTreeMap<String, Vec<f64>>) -> BTreeMap<String, Sprea
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn stable_metric() -> Metric {
+        Metric::count(
+            "instructions",
+            100,
+            super::super::MetricKind::Simulated,
+            super::super::MetricMethod::Cachegrind,
+        )
+    }
+
+    fn stable_spread(spread_pct: f64, samples: u32) -> Spread {
+        Spread {
+            samples,
+            min: 100.0,
+            max: 100.0 + spread_pct,
+            median: 100.0,
+            spread_pct,
+            p95: None,
+            p99: None,
+        }
+    }
+
+    #[test]
+    fn ranking_eligibility_accepts_repeatable_machine_independent_metrics() {
+        let eligibility =
+            ranking_eligibility(Some(&stable_metric()), Some(&stable_spread(0.0, 20)));
+        assert!(eligibility.eligible);
+        assert_eq!(eligibility.observed_spread_pct, Some(0.0));
+        assert_eq!(eligibility.reason, None);
+    }
+
+    #[test]
+    fn ranking_eligibility_rejects_spread_above_tolerance() {
+        let eligibility =
+            ranking_eligibility(Some(&stable_metric()), Some(&stable_spread(0.02, 20)));
+        assert!(!eligibility.eligible);
+        assert!(eligibility.reason.unwrap().contains("exceeds"));
+    }
+
+    #[test]
+    fn ranking_eligibility_rejects_host_dependent_metrics() {
+        let metric = Metric::count(
+            "wall_clock",
+            100,
+            super::super::MetricKind::Indicative,
+            super::super::MetricMethod::WallClock,
+        );
+        let eligibility = ranking_eligibility(Some(&metric), Some(&stable_spread(0.0, 20)));
+        assert!(!eligibility.eligible);
+        assert_eq!(
+            eligibility.reason.as_deref(),
+            Some("ranked metric depends on the host")
+        );
+    }
+
+    #[test]
+    fn ranking_eligibility_rejects_missing_or_single_sample_spreads() {
+        let metric = stable_metric();
+        assert!(!ranking_eligibility(Some(&metric), None).eligible);
+        assert!(!ranking_eligibility(Some(&metric), Some(&stable_spread(0.0, 1))).eligible);
+    }
 
     #[test]
     fn identical_samples_have_zero_spread() {

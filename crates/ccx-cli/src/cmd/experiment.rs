@@ -216,6 +216,24 @@ fn emit_report(format: Format, report: &ExperimentReport) -> anyhow::Result<()> 
                     "  ranked on    {}",
                     measurement["ranked_metric"].as_str().unwrap_or("unknown")
                 );
+                if measurement["rankability"]["eligible"] == true {
+                    println!(
+                        "  rankability  eligible | spread {:.4}% <= {:.4}% same-host tolerance",
+                        measurement["rankability"]["observed_spread_pct"]
+                            .as_f64()
+                            .unwrap_or_default(),
+                        measurement["rankability"]["tolerance_pct"]
+                            .as_f64()
+                            .unwrap_or_default()
+                    );
+                } else {
+                    println!(
+                        "  rankability  ineligible | {}",
+                        measurement["rankability"]["reason"]
+                            .as_str()
+                            .unwrap_or("repeatability has not been established")
+                    );
+                }
                 if let Some(metrics) = measurement["metrics"].as_array() {
                     for metric in metrics {
                         let value = metric["value"].as_f64().unwrap_or_default();

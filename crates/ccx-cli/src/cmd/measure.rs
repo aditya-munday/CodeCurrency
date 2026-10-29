@@ -13,6 +13,7 @@ use crate::cmd::{self, Fixable};
 use crate::context::{host_info, policy_for, Solution};
 use crate::pipeline::Pipeline;
 use crate::Format;
+use ccx_core::capsule::repeatability::{ranking_eligibility, RankingEligibility};
 use ccx_core::capsule::{
     fixed_env_map, hash_source_files, Build, Capsule, Harness, InputSpec, Metric, MetricKind,
     MetricMethod, ProblemRef, ReferenceBuild, Repeatability, SeedSet, SourceRef, Spread, Toolchain,
@@ -37,6 +38,7 @@ pub struct MeasureReport {
     pub toolchain: Toolchain,
     pub verdict: Verdict,
     pub ranked_metric: String,
+    pub rankability: RankingEligibility,
     pub runs: u32,
     pub repeatability: Option<Repeatability>,
     pub build_repeatability: Option<Repeatability>,
@@ -448,6 +450,16 @@ pub fn measure_solution(
 
     let hints = explain::explain(&capsule, &rules);
 
+    let ranked_metric = format!("{:?}", sol.problem.meta.ranked_metric).to_lowercase();
+    let ranked_metric_record = capsule
+        .metrics
+        .iter()
+        .find(|metric| metric.name == ranked_metric);
+    let ranked_metric_spread = capsule
+        .repeatability
+        .as_ref()
+        .and_then(|summary| summary.per_metric.get(&ranked_metric));
+
     let report = MeasureReport {
         capsule_path: capsule_path.display().to_string(),
         capsule_id: capsule.capsule_id.clone().unwrap_or_default(),
@@ -456,7 +468,8 @@ pub fn measure_solution(
         host: capsule.host.clone(),
         toolchain: capsule.toolchain.clone(),
         verdict: capsule.verdict,
-        ranked_metric: format!("{:?}", sol.problem.meta.ranked_metric).to_lowercase(),
+        ranked_metric,
+        rankability: ranking_eligibility(ranked_metric_record, ranked_metric_spread),
         runs,
         repeatability: capsule.repeatability.clone(),
         build_repeatability: capsule.build_repeatability.clone(),
@@ -499,6 +512,22 @@ pub fn emit_report(format: Format, problem: &str, report: &MeasureReport) -> any
             );
             println!("  problem   {problem}");
             println!("  ranked on {}", report.ranked_metric);
+            if report.rankability.eligible {
+                println!(
+                    "  rankability eligible | spread {:.4}% <= {:.4}% same-host tolerance",
+                    report.rankability.observed_spread_pct.unwrap_or_default(),
+                    report.rankability.tolerance_pct
+                );
+            } else {
+                println!(
+                    "  rankability ineligible | {}",
+                    report
+                        .rankability
+                        .reason
+                        .as_deref()
+                        .unwrap_or("repeatability has not been established")
+                );
+            }
             println!("  runs      {}", report.runs);
             println!(
                 "  target    {} | {} {} | {} | {} CPUs | frequency policy {}",

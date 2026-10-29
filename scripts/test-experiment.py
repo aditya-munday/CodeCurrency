@@ -43,6 +43,9 @@ with tempfile.TemporaryDirectory(prefix="ccx-experiment-test-") as temporary:
     assert report["correctness"]["generated_cases"] == 10
     assert report["measurement"]["capsule_id"]
     assert report["measurement"]["hints"] is not None
+    rankability = report["measurement"]["rankability"]
+    assert rankability["eligible"] is True
+    assert rankability["observed_spread_pct"] <= rankability["tolerance_pct"]
     assert any(metric["name"] == "instructions" for metric in report["measurement"]["metrics"])
     assert any(metric["name"] == "build_wall_clock" for metric in report["measurement"]["metrics"])
     assert report["assembly"]["assembly_files"]

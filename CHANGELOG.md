@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Report when a ranked metric's same-host repeatability exceeds the 0.01%
+  tolerance, and withhold compiler-matrix comparisons for ineligible metrics.
 - Refresh ten single- and multi-file C, C++, Rust, D, Zig, Odin, and Go
   twenty-run capsules for harness 0.18.0; replay each capsule and record the
   local repeatability evidence and current Go metric spreads.
