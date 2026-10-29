@@ -15,7 +15,7 @@ set -uo pipefail
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$repo_root"
 
-GCC_IMAGE="ccx-gcc@$(jq -r '.toolchains[] | select(.name=="gcc") | .image_digest' docker/toolchains.lock.json)"
+GCC_IMAGE="$(jq -r '.toolchains[] | select(.name=="gcc") | if .image_id then .image_id else "\(.image)@\(.image_digest)" end' docker/toolchains.lock.json)"
 
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT
