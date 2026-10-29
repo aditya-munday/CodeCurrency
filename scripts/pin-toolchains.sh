@@ -85,21 +85,21 @@ gcc_image_id=$(docker inspect --format='{{.Id}}' "$GCC_TAG")
 clang_image_id=$(docker inspect --format='{{.Id}}' "$CLANG_TAG")
 rust_image_id=$(docker inspect --format='{{.Id}}' "$RUST_TAG")
 
-gcc_version=$(docker run --rm --entrypoint gcc "$GCC_TAG" -dumpfullversion -dumpversion | head -1)
-gcc13_version=$(docker run --rm --entrypoint gcc-13 "$GCC_TAG" -dumpfullversion -dumpversion | head -1)
+gcc_version=$(docker run --rm --entrypoint gcc "$GCC_TAG" -dumpfullversion -dumpversion | sed -n '1p')
+gcc13_version=$(docker run --rm --entrypoint gcc-13 "$GCC_TAG" -dumpfullversion -dumpversion | sed -n '1p')
 # `clang --version` prints a long banner; keep just the numeric version.
-clang_version=$(docker run --rm --entrypoint clang "$CLANG_TAG" -dumpversion | head -1)
-clang18_version=$(docker run --rm --entrypoint clang-18 "$CLANG_TAG" -dumpversion | head -1)
+clang_version=$(docker run --rm --entrypoint clang "$CLANG_TAG" -dumpversion | sed -n '1p')
+clang18_version=$(docker run --rm --entrypoint clang-18 "$CLANG_TAG" -dumpversion | sed -n '1p')
 rust_version=$(docker run --rm --entrypoint rustc "$RUST_TAG" --version | awk '{print $2}')
-gdc_version=$(docker run --rm --entrypoint gdc-14 "$GCC_TAG" -dumpfullversion -dumpversion | head -1)
-zig_version=$(docker run --rm --entrypoint zig "$GCC_TAG" version | head -1)
-odin_version=$(docker run --rm --entrypoint odin "$CLANG_TAG" version | head -1 | tr -d '\r')
+gdc_version=$(docker run --rm --entrypoint gdc-14 "$GCC_TAG" -dumpfullversion -dumpversion | sed -n '1p')
+zig_version=$(docker run --rm --entrypoint zig "$GCC_TAG" version | sed -n '1p')
+odin_version=$(docker run --rm --entrypoint odin "$CLANG_TAG" version | sed -n '1p' | tr -d '\r')
 go_version=$(docker run --rm --entrypoint go "$GCC_TAG" version | awk '{print $3}')
 cmake_version=$(docker run --rm --entrypoint cmake "$GCC_TAG" --version | awk 'NR == 1 {print $3}')
-ninja_version=$(docker run --rm --entrypoint ninja "$GCC_TAG" --version | head -1)
+ninja_version=$(docker run --rm --entrypoint ninja "$GCC_TAG" --version | sed -n '1p')
 make_version=$(docker run --rm --entrypoint make "$GCC_TAG" --version | awk 'NR == 1 {print $3}')
 # `ldd --version` prints "ldd (Debian GLIBC 2.41-12+deb13u4) 2.41"; keep "glibc 2.41".
-libc_version=$(docker run --rm --entrypoint ldd "$GCC_TAG" --version | head -1 | sed -E 's/.*GLIBC ([0-9.]+).*/glibc \1/')
+libc_version=$(docker run --rm --entrypoint ldd "$GCC_TAG" --version | sed -n '1p' | sed -E 's/.*GLIBC ([0-9.]+).*/glibc \1/')
 
 # A locally built image ID is a content digest, but it is not stable across
 # rebuilds because apt layer timestamps differ. The compiler binaries are,
