@@ -79,6 +79,7 @@ pub fn run(format: Format, a: &std::path::Path, b: &std::path::Path) -> anyhow::
         || before.build.argv_program != after.build.argv_program
         || before.build.argv_runner != after.build.argv_runner
         || before.build.env != after.build.env
+        || before.build.stack_bytes != after.build.stack_bytes
     {
         warnings.push("build or runtime configuration differs; changes combine code and configuration effects".into());
     }
@@ -88,15 +89,7 @@ pub fn run(format: Format, a: &std::path::Path, b: &std::path::Path) -> anyhow::
         );
     }
 
-    let comparable = before.problem.id == after.problem.id
-        && before.same_problem_definition(&after)
-        && before.toolchain.same_environment(&after.toolchain)
-        && before.toolchain.name == after.toolchain.name
-        && before.toolchain.version == after.toolchain.version
-        && before.source.language == after.source.language
-        && before.harness.version == after.harness.version
-        && before.build.stdin_sha256.is_some()
-        && before.build.stdin_sha256 == after.build.stdin_sha256;
+    let comparable = before.same_comparison_context(&after);
 
     // Only deterministic metrics can be called a real change; an indicative
     // metric inside its interval is noise by construction.

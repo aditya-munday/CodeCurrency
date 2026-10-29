@@ -318,14 +318,7 @@ pub struct CapsuleDiff {
 /// noise, and so does the diff.
 pub fn diff(before: &Capsule, after: &Capsule) -> CapsuleDiff {
     let mut deltas = Vec::new();
-    let shared_context = before.same_problem_definition(after)
-        && before.source.language == after.source.language
-        && before.toolchain.name == after.toolchain.name
-        && before.toolchain.version == after.toolchain.version
-        && before.toolchain.same_environment(&after.toolchain)
-        && before.harness.version == after.harness.version
-        && before.build.stdin_sha256.is_some()
-        && before.build.stdin_sha256 == after.build.stdin_sha256;
+    let shared_context = before.same_comparison_context(after);
 
     for b in &before.metrics {
         let Some(a) = after.metrics.iter().find(|m| m.name == b.name) else {
@@ -554,5 +547,29 @@ mod tests {
             .unwrap();
         assert_eq!(instructions.significant, Significance::Unknown);
         assert!(!before.same_problem_definition(&after));
+    }
+
+    #[test]
+    fn runtime_arguments_and_execution_targets_must_match() {
+        let source = include_str!("../tests/fixtures/capsule-v11.json");
+        let before = Capsule::from_json(source).unwrap();
+        let mut after = before.clone();
+        after.build.argv_program.push("--different-mode".into());
+        let comparison = diff(&before, &after);
+        let instructions = comparison
+            .deltas
+            .iter()
+            .find(|delta| delta.name == "instructions")
+            .unwrap();
+        assert_eq!(instructions.significant, Significance::Unknown);
+        after = before.clone();
+        after.host.arch = "aarch64".into();
+        let comparison = diff(&before, &after);
+        let instructions = comparison
+            .deltas
+            .iter()
+            .find(|delta| delta.name == "instructions")
+            .unwrap();
+        assert_eq!(instructions.significant, Significance::Unknown);
     }
 }

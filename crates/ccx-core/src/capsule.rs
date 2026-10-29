@@ -404,6 +404,23 @@ impl Capsule {
                     .filter(|(path, _)| path.starts_with("problem/")))
     }
 
+    pub fn same_comparison_context(&self, other: &Self) -> bool {
+        self.same_problem_definition(other)
+            && self.source.language == other.source.language
+            && self.toolchain.name == other.toolchain.name
+            && self.toolchain.version == other.toolchain.version
+            && self.toolchain.same_environment(&other.toolchain)
+            && self.harness.version == other.harness.version
+            && self.build.stdin_sha256.is_some()
+            && self.build.stdin_sha256 == other.build.stdin_sha256
+            && self.build.argv_program == other.build.argv_program
+            && self.build.argv_runner == other.build.argv_runner
+            && self.build.env == other.build.env
+            && self.build.stack_bytes == other.build.stack_bytes
+            && self.host.arch == other.host.arch
+            && self.host.os == other.host.os
+    }
+
     /// Canonical JSON of the body with `capsule_id` removed and keys sorted.
     /// `serde_json::Value` maps are `BTreeMap`-backed, so serialisation is
     /// already key-sorted, which makes this stable across builds.

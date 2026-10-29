@@ -115,8 +115,9 @@ hardware counters comparable between machines.
 
 `ccx diff` calls metric changes conclusive only when both capsules record the
 same input bytes, problem definition, language, compiler profile and environment,
-and measurement harness version. Metric units, kinds, and collection methods
-must also match. Missing input identity or a changed comparison context makes
+execution target, runtime arguments and environment, stack limit, and measurement
+harness version. Metric units, kinds, and collection methods must also match.
+Missing input identity or a changed comparison context makes
 the metric deltas inconclusive with a reason in the report; machine-dependent
 metrics remain inconclusive across different host fingerprints. Different
 source code is expected, while a changed compiler or runtime configuration is

@@ -8,6 +8,8 @@
 - Require matching problem files, input bytes, compiler environment, and
   harness before `ccx diff` labels metric changes conclusive; identify unit or
   metric-method changes as inconclusive, with a reason shown for each metric.
+- Include execution architecture, operating system, runtime arguments, fixed
+  environment, and stack limit in the capsule-diff comparison context.
 - Refresh ten single- and multi-file C, C++, Rust, D, Zig, Odin, and Go
   twenty-run capsules for harness 0.18.0; replay each capsule and record the
   local repeatability evidence and current Go metric spreads.
