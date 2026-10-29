@@ -1008,6 +1008,44 @@ mod tests {
     }
 
     #[test]
+    fn schema_fifteen_golden_capsule_round_trips_with_raw_samples() {
+        let json = include_str!("../tests/fixtures/capsule-v15.json");
+        let capsule = Capsule::from_json(json).unwrap();
+        assert_eq!(capsule.schema_version, CURRENT_SCHEMA_VERSION);
+        assert_eq!(capsule.harness.version, HARNESS_VERSION);
+        assert_eq!(capsule.repeatability.as_ref().unwrap().runs, 20);
+        assert_eq!(
+            capsule.repeatability.as_ref().unwrap().per_metric["instructions"]
+                .values
+                .as_ref()
+                .unwrap()
+                .len(),
+            20
+        );
+        assert_eq!(capsule.build_repeatability.as_ref().unwrap().runs, 3);
+        let encoded = capsule.to_json_pretty().unwrap();
+        let decoded = Capsule::from_json(&encoded).unwrap();
+        assert_eq!(decoded, capsule);
+    }
+
+    #[test]
+    fn schema_fifteen_go_capsule_preserves_unrankable_raw_samples() {
+        let json = include_str!("../tests/fixtures/go-capsule-v15.json");
+        let capsule = Capsule::from_json(json).unwrap();
+        assert_eq!(capsule.source.language, Language::Go);
+        let spread = &capsule.repeatability.as_ref().unwrap().per_metric["instructions"];
+        assert_eq!(spread.values.as_ref().unwrap().len(), 20);
+        assert!(spread.spread_pct > repeatability::DEFAULT_RANKING_SPREAD_TOLERANCE_PCT);
+        let metric = capsule
+            .metrics
+            .iter()
+            .find(|metric| metric.name == "instructions")
+            .unwrap();
+        let eligibility = repeatability::ranking_eligibility(Some(metric), Some(spread));
+        assert!(!eligibility.eligible);
+    }
+
+    #[test]
     fn schema_thirteen_paired_capsule_round_trips_reference_provenance() {
         let mut capsule =
             Capsule::from_json(include_str!("../tests/fixtures/capsule-v12.json")).unwrap();

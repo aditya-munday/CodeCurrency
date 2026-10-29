@@ -252,6 +252,14 @@ is cross-language context only. This capsule is evidence about this runtime
 and workload, not a cross-machine result. The older `capsule.phase1.json` file
 records the 0.16.0 sample and is not replayable by the current harness.
 
+The schema-15 Go fixture at
+`crates/ccx-core/tests/fixtures/go-capsule-v15.json` records another 20-run
+measurement of that same size and seed with harness 0.19.0. Instructions spread
+by 0.6635%, simulated cache misses by 5.0985%, and branch misses by 0.2753%.
+The capsule keeps the raw observations and remains ineligible for ranking under
+the 0.01% gate; this one-host sample does not establish a cause or a
+cross-machine result.
+
 A current GCC C++ measurement at size `naive`, seed `1`, and twenty fresh-process
 runs is stored as [capsule.phase1.v0.18.json](arena/naive/capsule.phase1.v0.18.json).
 Its matching optimized run is [here](arena/good/capsule.phase1.v0.18.json).
