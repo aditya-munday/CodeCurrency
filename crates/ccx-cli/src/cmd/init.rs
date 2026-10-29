@@ -691,7 +691,10 @@ fn pathdiff(base: &Path, target: &Path) -> String {
     for part in &target_parts[common..] {
         out.push(part);
     }
-    let s = out.to_string_lossy().to_string();
+    let mut s = out.to_string_lossy().to_string();
+    if std::path::MAIN_SEPARATOR != '/' {
+        s = s.replace(std::path::MAIN_SEPARATOR, "/");
+    }
     if s.is_empty() {
         ".".to_string()
     } else {

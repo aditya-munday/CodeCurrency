@@ -30,7 +30,7 @@ prepare_archive() {
   local expected="$3"
   local url="$4"
 
-  if echo "$expected  $cache" | sha256sum --check --status; then
+  if echo "$expected  $cache" | sha256sum --check --status 2>/dev/null; then
     return
   fi
   rm -f "$cache"
@@ -119,12 +119,13 @@ clang_harness_sha=$(docker run --rm --entrypoint sha256sum "$CLANG_TAG" /opt/ccx
 rust_harness_sha=$(docker run --rm --entrypoint sha256sum "$RUST_TAG" /opt/ccx/runner /opt/ccx/batch-runner /opt/ccx/alloc_shim.o | sha256sum | cut -d' ' -f1)
 
 mkdir -p docker
-python3 - "$gcc_digest" "$clang_digest" "$rust_digest" "$gcc_version" "$gcc13_version" "$clang_version" "$clang18_version" "$rust_version" "$gdc_version" "$zig_version" "$odin_version" "$go_version" "$cmake_version" "$ninja_version" "$make_version" "$libc_version" "$BASE_DIGEST" "$DEBIAN_SNAPSHOT" "$gcc_sha" "$gcc13_sha" "$clang_sha" "$clang18_sha" "$rust_sha" "$gdc_sha" "$zig_sha" "$odin_sha" "$go_sha" "$cmake_sha" "$ninja_sha" "$make_sha" "$harness_sha" "$clang_harness_sha" "$rust_harness_sha" <<'PY'
+python3 - "$gcc_digest" "$clang_digest" "$rust_digest" "$gcc_version" "$gcc13_version" "$clang_version" "$clang18_version" "$rust_version" "$gdc_version" "$zig_version" "$odin_version" "$go_version" "$cmake_version" "$ninja_version" "$make_version" "$libc_version" "$BASE_DIGEST" "$DEBIAN_SNAPSHOT" "$gcc_sha" "$gcc13_sha" "$clang_sha" "$clang18_sha" "$rust_sha" "$gdc_sha" "$zig_sha" "$odin_sha" "$go_sha" "$cmake_sha" "$ninja_sha" "$make_sha" "$harness_sha" "$clang_harness_sha" "$rust_harness_sha" "$ZIG_SHA256" "$ODIN_SHA256" "$GO_SHA256" <<'PY'
 import hashlib, json, pathlib, sys
 (gcc_digest, clang_digest, rust_digest, gcc_version, gcc13_version, clang_version, clang18_version, rust_version,
  gdc_version, zig_version, odin_version, go_version, cmake_version, ninja_version, make_version,
  libc_version, base_digest, debian_snapshot, gcc_sha, gcc13_sha, clang_sha, clang18_sha, rust_sha, gdc_sha,
- zig_sha, odin_sha, go_sha, cmake_sha, ninja_sha, make_sha, harness_sha, clang_harness_sha, rust_harness_sha) = sys.argv[1:34]
+ zig_sha, odin_sha, go_sha, cmake_sha, ninja_sha, make_sha, harness_sha, clang_harness_sha, rust_harness_sha,
+ zig_archive_sha, odin_archive_sha, go_archive_sha) = sys.argv[1:37]
 
 def split_digest(ref):
     image, _, digest = ref.partition("@")
@@ -134,13 +135,21 @@ def file_sha256(path):
     return hashlib.sha256(pathlib.Path(path).read_bytes()).hexdigest()
 
 def environment_fingerprint(image, dockerfile, binaries, context_files, image_harness_sha):
+    archive_hashes = {
+        "docker/zig-x86_64-linux-0.17.0.tar.xz": zig_archive_sha,
+        "docker/odin-linux-amd64-dev-2026-10.tar.gz": odin_archive_sha,
+        "docker/go1.26.10.linux-amd64.tar.gz": go_archive_sha,
+    }
     identity = {
         "format": "ccx-toolchain-environment-v1",
         "image": image,
         "base_digest": base_digest,
         "apt_snapshot": debian_snapshot,
         "dockerfile_sha256": file_sha256("docker/" + dockerfile),
-        "context_sha256": {path: file_sha256(path) for path in context_files},
+        "context_sha256": {
+            path: archive_hashes[path] if path in archive_hashes else file_sha256(path)
+            for path in context_files
+        },
         "binary_sha256": binaries,
         "harness_sha256": image_harness_sha,
         "libc": libc_version,
