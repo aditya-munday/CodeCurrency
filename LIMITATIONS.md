@@ -97,16 +97,16 @@ known gaps in the expanded Phase 1 target:
 - Special checkers run as sandboxed programs with input, expected, and actual
   output paths. Checker authors still need to validate that their checker
   rejects malformed and adversarial output.
-- The local repeatability report is available. Hosted CI measured one C++ case
-  twenty times on Ubuntu 22.04, 24.04, and 26.04 runners and replayed all three
-  capsules successfully. Deterministic metrics matched exactly, the within-host
-  spread stayed below 0.01%, and both executable SHA-256 values plus the
-  reference compiler argv matched. The host fingerprint records the machine
-  class and may match across independent hosted runners.
-  All ten current harness-0.18.0 single- and multi-file language capsules replayed
-  with deterministic metrics matching on the local WSL2 host.
-  These are hosted VMs, not three bare-metal CPU models, and this run does not
-  certify every CPU microarchitecture.
+- The local repeatability report is available. The latest completed hosted CI
+  run measured C, C++, Rust, D, Zig, Odin, and Go twenty times on Ubuntu 22.04,
+  24.04, and 26.04. Its strict comparison and cross-host replay passed for C,
+  C++, Rust, D, Zig, and Odin; Go remained diagnostic because its deterministic
+  counters exceeded the 0.01% within-host threshold. All ten current
+  harness-0.18.0 single- and multi-file language capsules replayed with
+  deterministic metrics matching on the local WSL2 host. The successful hosted
+  run predates schema 15's raw-observation checks, which still need hosted
+  verification. These are hosted VMs, not three bare-metal CPU models, and do
+  not certify every CPU microarchitecture.
 - Paired wall-clock samples compare every solution with the problem's C++
   reference. For Rust, D, Zig, Odin, and Go this is cross-language context, not
   a same-language ranking signal. Wall-clock remains indicative and noisy; the

@@ -31,7 +31,7 @@ def capsule(fingerprint, toolchain="gcc", version="14.2.0"):
         metric("wall_clock", 400000, "indicative", "wall_clock", "nanoseconds"),
     ]
     return {
-        "schema_version": 14,
+        "schema_version": 15,
         "problem": {"id": "sorted-pair-sum", "statement_sha256": "b" * 64},
         "source": {"source_sha256": "c" * 64},
         "toolchain": {
@@ -50,7 +50,7 @@ def capsule(fingerprint, toolchain="gcc", version="14.2.0"):
             "binary_sha256": "sha256:" + "8" * 64,
             "argv": ["g++", "-O2", "-std=c++20", "/src0/reference.cpp"],
         },
-        "harness": {"version": "0.13.0", "ruleset": "phase1"},
+        "harness": {"version": "0.19.0", "ruleset": "phase1"},
         "input": {
             "generator": "generator-v1",
             "seed": 42,
@@ -64,10 +64,14 @@ def capsule(fingerprint, toolchain="gcc", version="14.2.0"):
             "runs": 20,
             "per_metric": {
                 item["name"]: {
+                    "samples": 20,
+                    "values": [item["value"]] * 20,
                     "min": item["value"],
                     "max": item["value"],
                     "median": item["value"],
                     "spread_pct": 0.0,
+                    "p95": item["value"],
+                    "p99": item["value"],
                 }
                 for item in metrics
                 if item["kind"] == "simulated"
@@ -146,12 +150,41 @@ class CompareCapsulesTests(unittest.TestCase):
 
     def test_within_host_spread_above_gate_fails(self):
         per_metric = self.capsules[1]["repeatability"]["per_metric"]["instructions"]
+        per_metric["values"] = [1000.0] * 19 + [1000.2]
         per_metric["max"] = 1000.2
         per_metric["spread_pct"] = 0.02
+        per_metric["p99"] = 1000.2
         result = self.run_comparison(self.capsules)
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("within-host spread", result.stderr)
         self.assertIn("exceeds the 0.010000% gate", result.stderr)
+
+    def test_raw_repeat_samples_must_match_across_machines(self):
+        observations = [1000.0] * 19 + [1000.00001]
+        for capsule in self.capsules:
+            spread = capsule["repeatability"]["per_metric"]["instructions"]
+            spread["values"] = observations.copy()
+            spread["max"] = 1000.00001
+            spread["spread_pct"] = 0.000001
+            spread["p99"] = 1000.00001
+        self.capsules[2]["repeatability"]["per_metric"]["instructions"]["values"] = list(
+            reversed(observations)
+        )
+        result = self.run_comparison(self.capsules)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("raw samples differ across machines", result.stderr)
+
+    def test_raw_repeat_samples_are_required(self):
+        del self.capsules[1]["repeatability"]["per_metric"]["instructions"]["values"]
+        result = self.run_comparison(self.capsules)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("raw repeatability samples are missing or invalid", result.stderr)
+
+    def test_raw_repeat_samples_must_match_the_summary(self):
+        self.capsules[1]["repeatability"]["per_metric"]["instructions"]["values"][0] += 1
+        result = self.run_comparison(self.capsules)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("raw samples disagree with", result.stderr)
 
     def test_cross_host_deterministic_difference_fails(self):
         self.capsules[2]["metrics"][0]["value"] = 1001
@@ -204,10 +237,12 @@ class CompareCapsulesTests(unittest.TestCase):
         self.assertIn("capsule identity differs at build.build_repeat", result.stderr)
 
     def test_explicit_spread_gate_is_respected(self):
-        per_metric = self.capsules[0]["repeatability"]["per_metric"]["allocations"]
-        per_metric["min"] = 3.99
-        per_metric["max"] = 4.0
-        per_metric["spread_pct"] = 0.25
+        for capsule in self.capsules:
+            per_metric = capsule["repeatability"]["per_metric"]["allocations"]
+            per_metric["values"] = [3.99] + [4.0] * 19
+            per_metric["min"] = 3.99
+            per_metric["max"] = 4.0
+            per_metric["spread_pct"] = 0.25
         result = self.run_comparison(self.capsules, max_spread=0.3)
         self.assertEqual(result.returncode, 0, result.stderr)
 

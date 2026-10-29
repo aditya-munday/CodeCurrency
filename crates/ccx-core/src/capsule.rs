@@ -13,12 +13,12 @@ pub mod migrate;
 pub mod repeatability;
 
 /// The schema version this build writes.
-pub const CURRENT_SCHEMA_VERSION: u32 = 14;
+pub const CURRENT_SCHEMA_VERSION: u32 = 15;
 pub const LEGACY_BINARY_DIGEST_UNAVAILABLE: &str = "unavailable_legacy";
 pub const DEFAULT_BUILD_REPEAT: u32 = 3;
 
 /// Measurement harness version, bumped when measurement behaviour changes.
-pub const HARNESS_VERSION: &str = "0.18.0";
+pub const HARNESS_VERSION: &str = "0.19.0";
 
 /// Canonical environment for both compilation and execution. Every other
 /// variable is dropped so counts cannot drift between runs.
@@ -354,6 +354,8 @@ pub struct Repeatability {
 pub struct Spread {
     #[serde(default)]
     pub samples: u32,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub values: Option<Vec<f64>>,
     pub min: f64,
     pub max: f64,
     pub median: f64,
@@ -362,6 +364,26 @@ pub struct Spread {
     pub p95: Option<f64>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub p99: Option<f64>,
+}
+
+impl Spread {
+    fn matches_values(&self) -> bool {
+        let Some(values) = &self.values else {
+            return true;
+        };
+        if values.len() != self.samples as usize || values.iter().any(|value| !value.is_finite()) {
+            return false;
+        }
+        let Some(summary) = repeatability::spread(values) else {
+            return false;
+        };
+        self.min == summary.min
+            && self.max == summary.max
+            && self.median == summary.median
+            && self.spread_pct == summary.spread_pct
+            && self.p95 == summary.p95
+            && self.p99 == summary.p99
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -389,6 +411,46 @@ pub struct Capsule {
 }
 
 impl Capsule {
+    fn same_build_recipe(&self, other: &Self) -> bool {
+        let before: Vec<&str> = self
+            .build
+            .argv
+            .iter()
+            .map(String::as_str)
+            .filter(|argument| !argument.starts_with("/src0/"))
+            .collect();
+        let after: Vec<&str> = other
+            .build
+            .argv
+            .iter()
+            .map(String::as_str)
+            .filter(|argument| !argument.starts_with("/src0/"))
+            .collect();
+        let before_configuration: Vec<_> = self
+            .source
+            .files
+            .iter()
+            .filter(|(path, _)| {
+                path.as_str() == "ccx.toml"
+                    || path.as_str() == "CMakeLists.txt"
+                    || path.ends_with(".cmake")
+            })
+            .collect();
+        let after_configuration: Vec<_> = other
+            .source
+            .files
+            .iter()
+            .filter(|(path, _)| {
+                path.as_str() == "ccx.toml"
+                    || path.as_str() == "CMakeLists.txt"
+                    || path.ends_with(".cmake")
+            })
+            .collect();
+        self.build.opt_level == other.build.opt_level
+            && before == after
+            && before_configuration == after_configuration
+    }
+
     pub fn same_problem_definition(&self, other: &Self) -> bool {
         self.problem.id == other.problem.id
             && self.problem.statement_sha256 == other.problem.statement_sha256
@@ -410,6 +472,7 @@ impl Capsule {
             && self.toolchain.name == other.toolchain.name
             && self.toolchain.version == other.toolchain.version
             && self.toolchain.same_environment(&other.toolchain)
+            && self.same_build_recipe(other)
             && self.harness.version == other.harness.version
             && self.build.stdin_sha256.is_some()
             && self.build.stdin_sha256 == other.build.stdin_sha256
@@ -661,6 +724,8 @@ impl Capsule {
                         !value.is_finite() || value < spread.median || value > spread.max
                     })
                     || matches!((spread.p95, spread.p99), (Some(p95), Some(p99)) if p99 < p95)
+                    || !spread.matches_values()
+                    || (self.harness.version == HARNESS_VERSION && spread.values.is_none())
                 {
                     return Err(CapsuleError::Invalid(format!(
                         "repeatability metric {name:?} has invalid spread"
@@ -718,6 +783,8 @@ impl Capsule {
                             !value.is_finite() || value < spread.median || value > spread.max
                         })
                         || matches!((spread.p95, spread.p99), (Some(p95), Some(p99)) if p99 < p95)
+                        || !spread.matches_values()
+                        || (self.harness.version == HARNESS_VERSION && spread.values.is_none())
                     {
                         return Err(CapsuleError::Invalid(format!(
                             "build repeatability metric {name:?} has invalid spread"
@@ -885,6 +952,29 @@ mod tests {
             .metrics
             .iter()
             .any(|metric| metric.name == "wall_clock"));
+    }
+
+    #[test]
+    fn comparison_context_rejects_changed_build_profiles_but_allows_source_layout_changes() {
+        let before =
+            Capsule::from_json(include_str!("../tests/fixtures/capsule-v11.json")).unwrap();
+        let mut after = before.clone();
+        after.build.argv.push("/src0/extra.cpp".into());
+        assert!(before.same_comparison_context(&after));
+
+        after.build.opt_level = "-O3".into();
+        assert!(!before.same_comparison_context(&after));
+
+        after = before.clone();
+        after.build.argv.push("-march=native".into());
+        assert!(!before.same_comparison_context(&after));
+
+        after = before.clone();
+        after
+            .source
+            .files
+            .insert("CMakeLists.txt".into(), "sha256:changed".into());
+        assert!(!before.same_comparison_context(&after));
     }
 
     #[test]
@@ -1065,6 +1155,51 @@ mod tests {
             .samples -= 1;
         capsule.seal().unwrap();
         assert!(matches!(capsule.validate(), Err(CapsuleError::Invalid(_))));
+    }
+
+    #[test]
+    fn current_harness_requires_raw_samples_and_checks_their_summary() {
+        let mut capsule =
+            Capsule::from_json(include_str!("../tests/fixtures/capsule-v12.json")).unwrap();
+        capsule.harness.version = HARNESS_VERSION.into();
+        let repeatability = capsule.repeatability.as_mut().unwrap();
+        for spread in repeatability.per_metric.values_mut() {
+            let values = vec![spread.median; spread.samples as usize];
+            *spread = repeatability::spread(&values).unwrap();
+        }
+        capsule.seal().unwrap();
+        assert!(capsule.validate().is_ok());
+
+        let mut missing = capsule.clone();
+        missing
+            .repeatability
+            .as_mut()
+            .unwrap()
+            .per_metric
+            .values_mut()
+            .next()
+            .unwrap()
+            .values = None;
+        missing.seal().unwrap();
+        assert!(matches!(missing.validate(), Err(CapsuleError::Invalid(_))));
+
+        let mut inconsistent = capsule;
+        inconsistent
+            .repeatability
+            .as_mut()
+            .unwrap()
+            .per_metric
+            .values_mut()
+            .next()
+            .unwrap()
+            .values
+            .as_mut()
+            .unwrap()[0] += 1.0;
+        inconsistent.seal().unwrap();
+        assert!(matches!(
+            inconsistent.validate(),
+            Err(CapsuleError::Invalid(_))
+        ));
     }
 
     #[test]

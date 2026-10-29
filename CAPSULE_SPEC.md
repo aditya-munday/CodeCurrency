@@ -1,4 +1,4 @@
-# CAPSULE_SPEC.md — Experiment Capsule, version 14
+# CAPSULE_SPEC.md — Experiment Capsule, version 15
 
 A **capsule** is the unit of evidence on CodeCurrency. It is a small, versioned
 JSON document that fully describes one measured run of one solution to one
@@ -26,7 +26,7 @@ Design rules:
 
 ```jsonc
 {
-  "schema_version": 14,         // integer, bumped only with a migration
+  "schema_version": 15,         // integer, bumped only with a migration
   "capsule_id": "…",            // sha256 of the canonical body (see §10)
   "created_at": "2026-10-26T11:00:00Z",  // RFC 3339, UTC
   "problem":   { … },           // §2
@@ -249,6 +249,12 @@ Harness version 0.18.0 accepts a complete Memcheck xtree profile whose totals
 are explicitly `(null)` as zero allocations and bytes. A missing, malformed, or
 duplicate totals section remains unavailable and fails measurement.
 
+Harness version 0.19.0 writes and validates the raw execution and clean-build
+repeatability observations in the schema-15 `values` arrays. The cross-machine
+gate compares these vectors exactly for deterministic metrics. Schema-14
+capsules migrate without fabricated observations and retain their original
+harness version.
+
 Harness version 0.17.0 validates each traced process summary and sums all
 process counters instead of retaining only the final summary.
 
@@ -293,6 +299,7 @@ Present when a metric was measured more than once.
   "per_metric": {
     "instructions": {
       "samples": 20,
+      "values": [ … ],
       "min": …,
       "max": …,
       "median": …,
@@ -310,13 +317,20 @@ keeps near-zero OS counters finite and makes their absolute variation visible.
 descriptive values, not confidence bounds; old capsules migrated from earlier
 schemas leave them absent rather than inventing tail data. A small run count
 may put p99 at the observed maximum.
+`values` stores every raw observation in execution order. Its length must equal
+`samples`, all values must be finite, and the loader recomputes and validates
+the summary fields from the raw observations. Schema-14 capsules migrate with
+`values` absent because the original observations cannot be reconstructed.
 Replay repeats the same number of runs and compares medians using twice the
 combined measured 95% confidence half-width. A match inside that interval is
 statistical, not bit-for-bit equality; zero-uncertainty metrics still require
 exact equality.
 Run counts range from 2 to 100; Go capsules require at least 20 runs because
-its current fresh-process counter spread is wider. Cross-machine tolerance is
-not asserted until a three-machine report exists.
+its current fresh-process counter spread is wider. The latest completed
+hosted three-runner gate passed for C, C++, Rust, D, Zig, and Odin under
+harness 0.18.0; Go remains diagnostic because its samples exceed the
+within-host tolerance. Schema-15 raw-sample validation and vector comparison
+still need a hosted run before they can be claimed as verified.
 
 ## 14. `build_repeatability`
 
@@ -324,9 +338,10 @@ Present when the capsule records more than one clean candidate build. The
 current measurement command performs three builds; every executable SHA-256
 digest must match before any result is accepted. `build.build_repeat` records
 the count. The summary has the same `runs` and per-metric `samples` fields as
-execution repeatability, and records the median, observed range, nearest-rank
-p95 and p99, and a seeded bootstrap 95% confidence interval for each build
-metric. Build timings are measured and host-dependent; they are not ranking
+execution repeatability, including ordered raw `values`, and records the
+median, observed range, nearest-rank p95 and p99, and a seeded bootstrap 95%
+confidence interval for each build metric. Build timings are measured and
+host-dependent; they are not ranking
 signals or cross-host determinism gates. Older capsules migrate with
 `build_repeat: 1` and no fabricated build repeatability data.
 
@@ -371,3 +386,6 @@ Version 14 records the candidate build count and clean-build timing spread;
 older capsules migrate with one honest build and no invented spread data. Any
 legacy build-time intervals not tied to an explicit build count are removed
 during migration and retained as single metric values.
+Version 15 stores raw observations for execution and build repeatability,
+validating every summary against those values; older capsules retain summaries
+without fabricated raw samples.

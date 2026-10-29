@@ -158,8 +158,47 @@ for capsule, path, runner, fingerprint, metrics in zip(
             minimum, maximum, median, reported = (
                 float(spread[field]) for field in ("min", "max", "median", "spread_pct")
             )
+            samples = spread.get("values")
         except (KeyError, TypeError, ValueError):
             raise SystemExit(f"{path.name}: invalid repeatability data for {name}")
+        if (
+            not isinstance(samples, list)
+            or len(samples) != capsule["repeatability"]["runs"]
+            or spread.get("samples") != len(samples)
+            or any(
+                not isinstance(value, (int, float))
+                or isinstance(value, bool)
+                or not math.isfinite(value)
+                for value in samples
+            )
+        ):
+            raise SystemExit(f"{path.name}: raw repeatability samples are missing or invalid for {name}")
+        ordered_samples = sorted(samples)
+        sample_count = len(ordered_samples)
+        actual_median = (
+            ordered_samples[sample_count // 2]
+            if sample_count % 2
+            else (ordered_samples[sample_count // 2 - 1] + ordered_samples[sample_count // 2]) / 2
+        )
+        actual_p95 = ordered_samples[math.ceil(sample_count * 0.95) - 1]
+        actual_p99 = ordered_samples[math.ceil(sample_count * 0.99) - 1]
+        actual_minimum = ordered_samples[0]
+        actual_maximum = ordered_samples[-1]
+        actual_spread = (actual_maximum - actual_minimum) / max(abs(actual_median), 1.0) * 100
+        expected_summary = {
+            "min": actual_minimum,
+            "max": actual_maximum,
+            "median": actual_median,
+            "spread_pct": actual_spread,
+            "p95": actual_p95,
+            "p99": actual_p99,
+        }
+        for field, expected in expected_summary.items():
+            actual = spread.get(field)
+            if not isinstance(actual, (int, float)) or isinstance(actual, bool):
+                raise SystemExit(f"{path.name}: repeatability summary is missing {field} for {name}")
+            if abs(actual - expected) > max(1e-9, abs(expected) * 1e-9):
+                raise SystemExit(f"{path.name}: raw samples disagree with {field} for {name}")
         if not all(math.isfinite(value) for value in (minimum, maximum, median, reported)):
             raise SystemExit(f"{path.name}: non-finite repeatability data for {name}")
         if minimum < 0 or minimum > median or median > maximum or reported < 0:
@@ -178,6 +217,13 @@ for capsule, path, runner, fingerprint, metrics in zip(
             f"{runner} ({fingerprint[:12]}): "
             f"{name} within-host spread {actual:.4f}%"
         )
+
+for name in sorted(names):
+    raw_samples = [
+        capsule["repeatability"]["per_metric"][name]["values"] for capsule in capsules
+    ]
+    if any(samples != raw_samples[0] for samples in raw_samples[1:]):
+        raise SystemExit(f"{name} raw samples differ across machines")
 
 print(f"host fingerprints recorded for 3 runner environments ({expected_toolchain})")
 print(f"all deterministic metrics stayed within {max_spread_pct:.6f}% within-host spread")

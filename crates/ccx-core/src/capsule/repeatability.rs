@@ -82,6 +82,7 @@ pub fn spread(values: &[f64]) -> Option<Spread> {
     let spread_pct = (max - min) / med.abs().max(1.0) * 100.0;
     Some(Spread {
         samples: n as u32,
+        values: Some(values.to_vec()),
         min,
         max,
         median: med,
@@ -185,6 +186,7 @@ mod tests {
     fn stable_spread(spread_pct: f64, samples: u32) -> Spread {
         Spread {
             samples,
+            values: None,
             min: 100.0,
             max: 100.0 + spread_pct,
             median: 100.0,
@@ -245,6 +247,13 @@ mod tests {
         let s = spread(&[1000.0, 1000.0, 1000.0]).unwrap();
         assert_eq!(s.spread_pct, 0.0);
         assert_eq!(s.median, 1000.0);
+    }
+
+    #[test]
+    fn spread_preserves_raw_observations_in_run_order() {
+        let values = vec![7.0, 2.0, 9.0, 4.0];
+        let summary = spread(&values).unwrap();
+        assert_eq!(summary.values, Some(values));
     }
 
     #[test]

@@ -187,7 +187,7 @@ with tempfile.TemporaryDirectory(prefix="ccx-experiment-test-") as temporary:
         if metric["name"] == "instructions"
     )
     assert forked_instructions > regular_instructions
-    assert json.loads(forked_capsule.read_text())["harness"]["version"] == "0.18.0"
+    assert json.loads(forked_capsule.read_text())["harness"]["version"] == "0.19.0"
     forked_replay = subprocess.run(
         [
             str(ccx),
@@ -279,7 +279,7 @@ with tempfile.TemporaryDirectory(prefix="ccx-experiment-test-") as temporary:
     assert zero_metrics["allocations"]["value"] == 0
     assert zero_metrics["allocated_bytes"]["value"] == 0
     assert zero_metrics["allocations"]["kind"] == "measured"
-    assert json.loads(zero_capsule.read_text())["harness"]["version"] == "0.18.0"
+    assert json.loads(zero_capsule.read_text())["harness"]["version"] == "0.19.0"
     zero_replay = subprocess.run(
         [
             str(ccx),

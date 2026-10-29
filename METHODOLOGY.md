@@ -91,6 +91,10 @@ cross-machine comparable.
 Harness version 0.18.0 records a structurally complete Memcheck profile with
 `totals: (null)` as zero allocations and bytes. Missing or malformed totals
 fail measurement rather than becoming zeros.
+Harness version 0.19.0 stores every per-run metric observation in the capsule
+in execution order and validates the reported summaries against those values.
+The three-runner determinism gate compares raw sample vectors for every
+deterministic metric, in addition to capsule medians and within-host spread.
 
 `ccx matrix` measures each selected compiler, optimization, build-system, and
 CMake-generator profile on the same problem, generated seed, and configured
@@ -116,7 +120,10 @@ hardware counters comparable between machines.
 `ccx diff` calls metric changes conclusive only when both capsules record the
 same input bytes, problem definition, language, compiler profile and environment,
 execution target, runtime arguments and environment, stack limit, and measurement
-harness version. Metric units, kinds, and collection methods must also match.
+harness version, optimization level, and normalized build argv. Source file
+arguments are omitted from build-profile comparison so changing project layout
+does not invalidate an otherwise matched build configuration. Metric units,
+kinds, and collection methods must also match.
 Missing input identity or a changed comparison context makes
 the metric deltas inconclusive with a reason in the report; machine-dependent
 metrics remain inconclusive across different host fingerprints. Different
@@ -275,7 +282,9 @@ candidate wall-clock spreads on this one host are:
 The original `capsule.phase1.json` files remain as harness-0.16.0 historical
 samples. Current replay requires the capsule's harness version. The refreshed
 0.18.0 capsules all replayed with `deterministic_match: true` on the local
-host. This establishes local replay only. The three-host CI job measures seven
+host. The latest completed three-runner CI workflow also passed its hosted
+cross-machine comparison and replay for six gated profiles under harness
+0.18.0. The three-host CI job measures seven
 profiles: C and C++ with GCC, Rust, D with GDC, Zig, Odin, and Go. Its strict
 cross-machine comparison currently gates C, C++, Rust, D, Zig, and Odin. Go
 measurements are retained as diagnostic artifacts because their instruction
@@ -312,9 +321,9 @@ readings are reported in the capsules but excluded from cross-host equality
 checks. The comparison job then rebuilds the pinned images and replays one
 capsule for each strictly gated profile against its local image, which checks
 that environment fingerprints permit real cross-host replay. This checks
-independent hosted runner environments, not three bare-metal CPU models. Until
-the workflow has completed successfully, the cross-host gate remains
-unverified.
+independent hosted runner environments, not three bare-metal CPU models. The
+successful run used harness 0.18.0; schema-15 raw-observation checks remain
+unverified until this schema change passes the hosted workflow.
 
 The schema-11 golden fixture at
 `crates/ccx-core/tests/fixtures/capsule-v11.json` records a local GCC run at

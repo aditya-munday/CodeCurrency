@@ -120,6 +120,10 @@ pub fn migrate_value(value: Value, from: u32) -> Result<Value, CapsuleError> {
                 value["schema_version"] = serde_json::json!(14);
                 version = 14;
             }
+            14 => {
+                value["schema_version"] = serde_json::json!(15);
+                version = 15;
+            }
             _ => {
                 return Err(CapsuleError::Invalid(format!(
                     "no migration path from schema_version {version}"
@@ -258,6 +262,33 @@ mod tests {
         );
         assert_eq!(migrated["metrics"][0]["kind"], "measured");
         assert!(migrated["metrics"][0].get("uncertainty").is_none());
+    }
+
+    #[test]
+    fn version_fourteen_advances_without_fabricating_raw_samples() {
+        let migrated = migrate_value(
+            serde_json::json!({
+                "schema_version": 14,
+                "repeatability": {
+                    "runs": 20,
+                    "per_metric": {
+                        "instructions": {
+                            "samples": 20,
+                            "min": 100,
+                            "max": 100,
+                            "median": 100,
+                            "spread_pct": 0
+                        }
+                    }
+                }
+            }),
+            14,
+        )
+        .unwrap();
+        assert_eq!(migrated["schema_version"], 15);
+        assert!(migrated["repeatability"]["per_metric"]["instructions"]
+            .get("values")
+            .is_none());
     }
 
     #[test]

@@ -512,6 +512,27 @@ mod tests {
     }
 
     #[test]
+    fn changed_optimization_profile_makes_metric_deltas_inconclusive() {
+        let before =
+            Capsule::from_json(include_str!("../tests/fixtures/capsule-v11.json")).unwrap();
+        let mut after = before.clone();
+        after.build.opt_level = "-O3".into();
+        after.metrics[0].value += 100.0;
+        let comparison = diff(&before, &after);
+        let instructions = comparison
+            .deltas
+            .iter()
+            .find(|delta| delta.name == "instructions")
+            .unwrap();
+        assert_eq!(instructions.significant, Significance::Unknown);
+        assert!(instructions
+            .inconclusive_reason
+            .as_deref()
+            .unwrap()
+            .contains("identity differs"));
+    }
+
+    #[test]
     fn metric_label_changes_are_inconclusive() {
         let source = include_str!("../tests/fixtures/capsule-v11.json");
         let before = Capsule::from_json(source).unwrap();

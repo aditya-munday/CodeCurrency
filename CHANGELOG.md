@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Advance capsules to schema 15 and harness 0.19.0. Preserve every execution
+  and clean-build repeatability observation, validate summaries from raw data,
+  and compare deterministic sample vectors across hosted machines. Migrate
+  older capsules without fabricating observations.
 - Report when a ranked metric's same-host repeatability exceeds the 0.01%
   tolerance or has fewer than twenty samples, and withhold compiler-matrix
   comparisons for ineligible metrics.
@@ -10,6 +14,8 @@
   metric-method changes as inconclusive, with a reason shown for each metric.
 - Include execution architecture, operating system, runtime arguments, fixed
   environment, and stack limit in the capsule-diff comparison context.
+- Include optimization level and normalized compiler/build arguments in the
+  capsule-diff comparison context so flag changes cannot be attributed to code.
 - Refresh ten single- and multi-file C, C++, Rust, D, Zig, Odin, and Go
   twenty-run capsules for harness 0.18.0; replay each capsule and record the
   local repeatability evidence and current Go metric spreads.
