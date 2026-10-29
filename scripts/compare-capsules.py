@@ -7,39 +7,53 @@ import argparse
 
 parser = argparse.ArgumentParser()
 parser.add_argument("directory", nargs="?", default=".")
+parser.add_argument("--toolchain")
 parser.add_argument("--max-within-host-spread-pct", type=float, default=0.01)
 arguments = parser.parse_args()
 root = pathlib.Path(arguments.directory)
 max_spread_pct = arguments.max_within_host_spread_pct
 if not math.isfinite(max_spread_pct) or max_spread_pct < 0:
     raise SystemExit("maximum within-host spread must be a finite non-negative percentage")
-capsule_paths = sorted(root.glob("capsule-*.json"))
+pattern = f"capsule-*-{arguments.toolchain}.json" if arguments.toolchain else "capsule-*.json"
+capsule_paths = sorted(root.glob(pattern))
 if len(capsule_paths) != 3:
     raise SystemExit(f"expected exactly 3 capsules in {root}, found {len(capsule_paths)}")
 
 capsules = [json.loads(path.read_text()) for path in capsule_paths]
-locks = [json.loads(root.joinpath(f"toolchains-{path.stem.removeprefix('capsule-')}.json").read_text()) for path in capsule_paths]
+runner_names = [
+    path.stem.removeprefix("capsule-").removesuffix(f"-{arguments.toolchain}")
+    if arguments.toolchain
+    else path.stem.removeprefix("capsule-")
+    for path in capsule_paths
+]
+locks = [json.loads(root.joinpath(f"toolchains-{runner}.json").read_text()) for runner in runner_names]
 
 for field in ("apt_snapshot", "harness_sha256"):
     values = {lock.get(field) for lock in locks}
     if len(values) != 1:
         raise SystemExit(f"toolchain lock mismatch for {field}: {sorted(map(str, values))}")
 
-gcc_entries = []
-for lock in locks:
-    entry = next((item for item in lock["toolchains"] if item["name"] == "gcc"), None)
+expected_toolchain = arguments.toolchain or capsules[0].get("toolchain", {}).get("name")
+toolchain_entries = []
+for lock, capsule, path in zip(locks, capsules, capsule_paths):
+    if capsule.get("toolchain", {}).get("name") != expected_toolchain:
+        raise SystemExit(f"{path.name}: capsule toolchain does not match {expected_toolchain}")
+    entry = next((item for item in lock["toolchains"] if item["name"] == expected_toolchain), None)
     if entry is None:
-        raise SystemExit("toolchain lock is missing gcc")
-    gcc_entries.append(entry)
+        raise SystemExit(f"{path.name}: toolchain lock is missing {expected_toolchain}")
+    if capsule.get("toolchain", {}).get("version") != entry.get("version"):
+        raise SystemExit(f"{path.name}: capsule toolchain version does not match its lock")
+    if capsule.get("toolchain", {}).get("environment_fingerprint") != entry.get("environment_fingerprint"):
+        raise SystemExit(f"{path.name}: capsule toolchain environment does not match its lock")
+    toolchain_entries.append(entry)
 for field in ("version", "libc", "compiler_sha256", "environment_fingerprint"):
-    values = {entry.get(field) for entry in gcc_entries}
+    values = {entry.get(field) for entry in toolchain_entries}
     if len(values) != 1:
-        raise SystemExit(f"GCC lock mismatch for {field}: {sorted(map(str, values))}")
+        raise SystemExit(f"{expected_toolchain} lock mismatch for {field}: {sorted(map(str, values))}")
 
 baseline = capsules[0]
 if any(capsule.get("repeatability", {}).get("runs") != 20 for capsule in capsules):
     raise SystemExit("each cross-machine capsule must contain exactly 20 samples")
-runner_names = [path.stem.removeprefix("capsule-") for path in capsule_paths]
 if len(set(runner_names)) != 3:
     raise SystemExit(f"expected 3 independent runner labels, got {runner_names}")
 fingerprints = []
@@ -163,5 +177,5 @@ for capsule, path, runner, fingerprint, metrics in zip(
             f"{name} within-host spread {actual:.4f}%"
         )
 
-print("host fingerprints recorded for 3 runner environments")
+print(f"host fingerprints recorded for 3 runner environments ({expected_toolchain})")
 print(f"all deterministic metrics stayed within {max_spread_pct:.6f}% within-host spread")

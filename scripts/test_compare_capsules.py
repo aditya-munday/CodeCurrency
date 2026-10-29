@@ -19,7 +19,7 @@ def metric(name, value, kind, method, unit):
     }
 
 
-def capsule(fingerprint):
+def capsule(fingerprint, toolchain="gcc", version="14.2.0"):
     metrics = [
         metric("instructions", 1000, "simulated", "cachegrind", "count"),
         metric("allocations", 4, "measured", "valgrind_memcheck", "count"),
@@ -35,8 +35,8 @@ def capsule(fingerprint):
         "problem": {"id": "sorted-pair-sum", "statement_sha256": "b" * 64},
         "source": {"source_sha256": "c" * 64},
         "toolchain": {
-            "name": "gcc",
-            "version": "14.2.0",
+            "name": toolchain,
+            "version": version,
             "environment_fingerprint": "sha256:" + "f" * 64,
         },
         "build": {
@@ -81,14 +81,14 @@ def capsule(fingerprint):
     }
 
 
-def toolchain_lock():
+def toolchain_lock(name="gcc", version="14.2.0"):
     return {
         "apt_snapshot": "2026-10-01T00:00:00Z",
         "harness_sha256": "a" * 64,
         "toolchains": [
             {
-                "name": "gcc",
-                "version": "14.2.0",
+                "name": name,
+                "version": version,
                 "libc": "glibc-2.41",
                 "compiler_sha256": "e" * 64,
                 "environment_fingerprint": "sha256:" + "f" * 64,
@@ -98,15 +98,23 @@ def toolchain_lock():
 
 
 class CompareCapsulesTests(unittest.TestCase):
-    def run_comparison(self, capsules, max_spread=None):
+    def run_comparison(self, capsules, max_spread=None, toolchain=None):
         with tempfile.TemporaryDirectory() as temporary:
             root = pathlib.Path(temporary)
             for index, label in enumerate(("ubuntu-22.04", "ubuntu-24.04", "ubuntu-26.04")):
-                (root / f"capsule-{label}.json").write_text(json.dumps(capsules[index]))
-                (root / f"toolchains-{label}.json").write_text(json.dumps(toolchain_lock()))
+                suffix = f"-{toolchain}" if toolchain else ""
+                (root / f"capsule-{label}{suffix}.json").write_text(json.dumps(capsules[index]))
+                capsule_toolchain = capsules[index]["toolchain"]
+                lock = toolchain_lock(capsule_toolchain["name"], capsule_toolchain["version"])
+                lock["toolchains"][0]["environment_fingerprint"] = capsule_toolchain[
+                    "environment_fingerprint"
+                ]
+                (root / f"toolchains-{label}.json").write_text(json.dumps(lock))
             command = [sys.executable, str(SCRIPT), str(root)]
             if max_spread is not None:
                 command.extend(["--max-within-host-spread-pct", str(max_spread)])
+            if toolchain:
+                command.extend(["--toolchain", toolchain])
             return subprocess.run(command, capture_output=True, text=True, check=False)
 
     def setUp(self):
@@ -152,7 +160,22 @@ class CompareCapsulesTests(unittest.TestCase):
         self.capsules[1]["toolchain"]["environment_fingerprint"] = "sha256:" + "1" * 64
         result = self.run_comparison(self.capsules)
         self.assertNotEqual(result.returncode, 0)
-        self.assertIn("capsule identity differs at toolchain.environment_fingerprint", result.stderr)
+        self.assertIn("gcc lock mismatch for environment_fingerprint", result.stderr)
+
+    def test_non_gcc_toolchain_uses_its_own_lock_entry(self):
+        rust_capsules = [
+            capsule("host-22", "rust", "1.85.1"),
+            capsule("host-24", "rust", "1.85.1"),
+            capsule("host-26", "rust", "1.85.1"),
+        ]
+        result = self.run_comparison(rust_capsules, toolchain="rust")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("3 runner environments (rust)", result.stdout)
+
+    def test_capsule_toolchain_must_match_requested_toolchain(self):
+        result = self.run_comparison(self.capsules, toolchain="rust")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("capsule toolchain does not match rust", result.stderr)
 
     def test_binary_digest_mismatch_fails(self):
         self.capsules[2]["build"]["binary_sha256"] = "sha256:" + "8" * 64

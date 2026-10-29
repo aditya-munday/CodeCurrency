@@ -114,14 +114,18 @@ jobs:
       - run: scripts/pin-toolchains.sh
       - run: cargo build --release
       - run: target/release/ccx doctor --format json
-      - run: target/release/ccx measure --dir arena/good --size good --seed 42 --repeat 20 --out "$RUNNER_TEMP/capsule.json" --format json
-      - run: cp "$RUNNER_TEMP/capsule.json" "$RUNNER_TEMP/capsule-${{ matrix.runner }}.json"
+      - run: |
+          for profile in gcc:arena/good rust:arena/rust gdc:arena/d zig:arena/zig odin:arena/odin go:arena/go; do
+            toolchain="${profile%%:*}"
+            directory="${profile#*:}"
+            target/release/ccx measure --dir "$directory" --size good --seed 42 --repeat 20 --out "$RUNNER_TEMP/capsule-${{ matrix.runner }}-$toolchain.json" --format json
+          done
       - run: cp docker/toolchains.lock.json "$RUNNER_TEMP/toolchains-${{ matrix.runner }}.json"
       - uses: actions/upload-artifact@v4
         with:
           name: repeatability-${{ matrix.runner }}
           path: |
-            ${{ runner.temp }}/capsule-${{ matrix.runner }}.json
+            ${{ runner.temp }}/capsule-${{ matrix.runner }}-*.json
             ${{ runner.temp }}/toolchains-${{ matrix.runner }}.json
           if-no-files-found: error
   compare-cross-machine-repeatability:
@@ -139,7 +143,13 @@ jobs:
       - run: cargo build --release
       - run: target/release/ccx doctor --format json
       - run: python3 -m unittest scripts/test_compare_capsules.py
-      - run: python3 scripts/compare-capsules.py repeatability
-      - run: target/release/ccx replay repeatability/capsule-ubuntu-22.04.json --dir arena/good
-      - run: target/release/ccx replay repeatability/capsule-ubuntu-24.04.json --dir arena/good
-      - run: target/release/ccx replay repeatability/capsule-ubuntu-26.04.json --dir arena/good
+      - run: |
+          for toolchain in gcc rust gdc zig odin; do
+            python3 scripts/compare-capsules.py repeatability --toolchain "$toolchain"
+          done
+      - run: |
+          for profile in gcc:arena/good rust:arena/rust gdc:arena/d zig:arena/zig odin:arena/odin; do
+            toolchain="${profile%%:*}"
+            directory="${profile#*:}"
+            target/release/ccx replay "repeatability/capsule-ubuntu-24.04-$toolchain.json" --dir "$directory"
+          done

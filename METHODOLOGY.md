@@ -273,10 +273,12 @@ candidate wall-clock spreads on this one host are:
 The original `capsule.phase1.json` files remain as harness-0.16.0 historical
 samples. Current replay requires the capsule's harness version. The refreshed
 0.18.0 capsules all replayed with `deterministic_match: true` on the local
-host. This establishes local replay only; the three-host CI job has not yet
-produced a hosted result. Go's instruction and simulated-cache spreads exceed
-the C++ CI's current 0.01% gate and should not inherit that tolerance without
-cross-machine measurements.
+host. This establishes local replay only. The three-host CI job measures each
+of the six default language profiles, but its strict cross-machine comparison
+currently gates GCC, Rust, GDC, Zig, and Odin. Go measurements are retained as
+diagnostic artifacts because their instruction and simulated-cache spreads
+exceed the 0.01% repeatability threshold; they are not considered rankable or
+replayable proof of cross-machine equality.
 The cross-machine CI comparison reports each host's observed spread for every
 deterministic metric and requires it to stay at or below 0.01% by default. CI
 uses this default threshold. It also
@@ -291,22 +293,25 @@ Capsules hash the solution tree and the problem tree. Entries under
 all other entries are relative to the solution folder. Transient build and
 version-control directories are excluded.
 
-The `cross-machine-repeatability` job measures the same C++ source, problem
-size, and seed twenty times on Ubuntu 22.04, 24.04, and 26.04. Its comparison
-step requires three distinct hosted runner labels, a recorded host fingerprint
-for every runner, a within-host spread no higher than 0.01% for deterministic
-metrics, and exact agreement between hosts after
-checking source, input, harness, compiler fingerprint, and package snapshot
-identity, as well as exact equality of the candidate and reference executable
-SHA-256 values and reference compiler argv. Image digests and host fingerprints
-may differ. Host-dependent
-hardware counters, `getrusage` metrics, and wall-clock readings are reported in
-the capsules but excluded from cross-host equality checks. The comparison job
-then rebuilds the pinned images and replays all three capsules against its
-local image, which checks that environment fingerprints permit real cross-host
-replay. This checks independent hosted runner environments, not three
-bare-metal CPU models. Until the workflow has completed successfully, the
-cross-host gate remains unverified.
+The `cross-machine-repeatability` job measures the same per-language solution,
+problem size, and seed twenty times on Ubuntu 22.04, 24.04, and 26.04. It
+captures GCC, Rust, GDC, Zig, Odin, and Go capsules. Its strict comparison step
+currently gates GCC, Rust, GDC, Zig, and Odin: it requires three distinct
+hosted runner labels, a recorded host fingerprint for every runner, a within-
+host spread no higher than 0.01% for deterministic metrics, and exact agreement
+between hosts after checking source, input, harness, compiler fingerprint, and
+package snapshot identity, as well as exact equality of candidate and reference
+executable SHA-256 values and reference compiler argv. Go capsules are retained
+as diagnostics but are not asserted equal because current Go measurements
+exceed the repeatability threshold. Image digests and host fingerprints may
+differ. Host-dependent hardware counters, `getrusage` metrics, and wall-clock
+readings are reported in the capsules but excluded from cross-host equality
+checks. The comparison job then rebuilds the pinned images and replays one
+capsule for each strictly gated profile against its local image, which checks
+that environment fingerprints permit real cross-host replay. This checks
+independent hosted runner environments, not three bare-metal CPU models. Until
+the workflow has completed successfully, the cross-host gate remains
+unverified.
 
 The schema-11 golden fixture at
 `crates/ccx-core/tests/fixtures/capsule-v11.json` records a local GCC run at
