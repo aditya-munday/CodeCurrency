@@ -273,12 +273,12 @@ candidate wall-clock spreads on this one host are:
 The original `capsule.phase1.json` files remain as harness-0.16.0 historical
 samples. Current replay requires the capsule's harness version. The refreshed
 0.18.0 capsules all replayed with `deterministic_match: true` on the local
-host. This establishes local replay only. The three-host CI job measures each
-of the six default language profiles, but its strict cross-machine comparison
-currently gates GCC, Rust, GDC, Zig, and Odin. Go measurements are retained as
-diagnostic artifacts because their instruction and simulated-cache spreads
-exceed the 0.01% repeatability threshold; they are not considered rankable or
-replayable proof of cross-machine equality.
+host. This establishes local replay only. The three-host CI job measures seven
+profiles: C and C++ with GCC, Rust, D with GDC, Zig, Odin, and Go. Its strict
+cross-machine comparison currently gates C, C++, Rust, D, Zig, and Odin. Go
+measurements are retained as diagnostic artifacts because their instruction
+and simulated-cache spreads exceed the 0.01% repeatability threshold; they are
+not considered rankable or replayable proof of cross-machine equality.
 The cross-machine CI comparison reports each host's observed spread for every
 deterministic metric and requires it to stay at or below 0.01% by default. CI
 uses this default threshold. It also
@@ -293,13 +293,14 @@ Capsules hash the solution tree and the problem tree. Entries under
 all other entries are relative to the solution folder. Transient build and
 version-control directories are excluded.
 
-The `cross-machine-repeatability` job measures the same per-language solution,
-problem size, and seed twenty times on Ubuntu 22.04, 24.04, and 26.04. It
-captures GCC, Rust, GDC, Zig, Odin, and Go capsules. Its strict comparison step
-currently gates GCC, Rust, GDC, Zig, and Odin: it requires three distinct
-hosted runner labels, a recorded host fingerprint for every runner, a within-
-host spread no higher than 0.01% for deterministic metrics, and exact agreement
-between hosts after checking source, input, harness, compiler fingerprint, and
+The `cross-machine-repeatability` job measures each language profile with the
+same problem size and seed twenty times on Ubuntu 22.04, 24.04, and 26.04. It
+captures C and C++ with GCC, Rust, D with GDC, Zig, Odin, and Go. Its strict
+comparison step currently gates C, C++, Rust, D, Zig, and Odin: it requires
+three distinct hosted runner labels, a recorded host fingerprint for every
+runner, a within-host spread no higher than 0.01% for deterministic metrics,
+and exact agreement between hosts after checking source, input, harness,
+compiler fingerprint, and
 package snapshot identity, as well as exact equality of candidate and reference
 executable SHA-256 values and reference compiler argv. Go capsules are retained
 as diagnostics but are not asserted equal because current Go measurements

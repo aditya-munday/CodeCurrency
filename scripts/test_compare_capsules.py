@@ -98,11 +98,12 @@ def toolchain_lock(name="gcc", version="14.2.0"):
 
 
 class CompareCapsulesTests(unittest.TestCase):
-    def run_comparison(self, capsules, max_spread=None, toolchain=None):
+    def run_comparison(self, capsules, max_spread=None, toolchain=None, profile=None):
         with tempfile.TemporaryDirectory() as temporary:
             root = pathlib.Path(temporary)
             for index, label in enumerate(("ubuntu-22.04", "ubuntu-24.04", "ubuntu-26.04")):
-                suffix = f"-{toolchain}" if toolchain else ""
+                selector = profile or toolchain
+                suffix = f"-{selector}" if selector else ""
                 (root / f"capsule-{label}{suffix}.json").write_text(json.dumps(capsules[index]))
                 capsule_toolchain = capsules[index]["toolchain"]
                 lock = toolchain_lock(capsule_toolchain["name"], capsule_toolchain["version"])
@@ -115,6 +116,8 @@ class CompareCapsulesTests(unittest.TestCase):
                 command.extend(["--max-within-host-spread-pct", str(max_spread)])
             if toolchain:
                 command.extend(["--toolchain", toolchain])
+            if profile:
+                command.extend(["--profile", profile])
             return subprocess.run(command, capture_output=True, text=True, check=False)
 
     def setUp(self):
@@ -171,6 +174,11 @@ class CompareCapsulesTests(unittest.TestCase):
         result = self.run_comparison(rust_capsules, toolchain="rust")
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn("3 runner environments (rust)", result.stdout)
+
+    def test_profile_selector_distinguishes_c_from_cpp_under_gcc(self):
+        result = self.run_comparison(self.capsules, toolchain="gcc", profile="c-gcc")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("3 runner environments (gcc)", result.stdout)
 
     def test_capsule_toolchain_must_match_requested_toolchain(self):
         result = self.run_comparison(self.capsules, toolchain="rust")

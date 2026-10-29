@@ -8,21 +8,23 @@ import argparse
 parser = argparse.ArgumentParser()
 parser.add_argument("directory", nargs="?", default=".")
 parser.add_argument("--toolchain")
+parser.add_argument("--profile")
 parser.add_argument("--max-within-host-spread-pct", type=float, default=0.01)
 arguments = parser.parse_args()
 root = pathlib.Path(arguments.directory)
 max_spread_pct = arguments.max_within_host_spread_pct
 if not math.isfinite(max_spread_pct) or max_spread_pct < 0:
     raise SystemExit("maximum within-host spread must be a finite non-negative percentage")
-pattern = f"capsule-*-{arguments.toolchain}.json" if arguments.toolchain else "capsule-*.json"
+selector = arguments.profile or arguments.toolchain
+pattern = f"capsule-*-{selector}.json" if selector else "capsule-*.json"
 capsule_paths = sorted(root.glob(pattern))
 if len(capsule_paths) != 3:
     raise SystemExit(f"expected exactly 3 capsules in {root}, found {len(capsule_paths)}")
 
 capsules = [json.loads(path.read_text()) for path in capsule_paths]
 runner_names = [
-    path.stem.removeprefix("capsule-").removesuffix(f"-{arguments.toolchain}")
-    if arguments.toolchain
+    path.stem.removeprefix("capsule-").removesuffix(f"-{selector}")
+    if selector
     else path.stem.removeprefix("capsule-")
     for path in capsule_paths
 ]

@@ -115,10 +115,10 @@ jobs:
       - run: cargo build --release
       - run: target/release/ccx doctor --format json
       - run: |
-          for profile in gcc:arena/good rust:arena/rust gdc:arena/d zig:arena/zig odin:arena/odin go:arena/go; do
-            toolchain="${profile%%:*}"
+          for profile in cpp-gcc:arena/good c-gcc:arena/c-multifile rust:arena/rust d-gdc:arena/d zig:arena/zig odin:arena/odin go:arena/go; do
+            profile_id="${profile%%:*}"
             directory="${profile#*:}"
-            target/release/ccx measure --dir "$directory" --size good --seed 42 --repeat 20 --out "$RUNNER_TEMP/capsule-${{ matrix.runner }}-$toolchain.json" --format json
+            target/release/ccx measure --dir "$directory" --size good --seed 42 --repeat 20 --out "$RUNNER_TEMP/capsule-${{ matrix.runner }}-$profile_id.json" --format json
           done
       - run: cp docker/toolchains.lock.json "$RUNNER_TEMP/toolchains-${{ matrix.runner }}.json"
       - uses: actions/upload-artifact@v4
@@ -144,12 +144,16 @@ jobs:
       - run: target/release/ccx doctor --format json
       - run: python3 -m unittest scripts/test_compare_capsules.py
       - run: |
-          for toolchain in gcc rust gdc zig odin; do
-            python3 scripts/compare-capsules.py repeatability --toolchain "$toolchain"
+          for profile in cpp-gcc:gcc c-gcc:gcc rust:rust d-gdc:gdc zig:zig odin:odin; do
+            profile_id="${profile%%:*}"
+            toolchain="${profile#*:}"
+            python3 scripts/compare-capsules.py repeatability --toolchain "$toolchain" --profile "$profile_id"
           done
       - run: |
-          for profile in gcc:arena/good rust:arena/rust gdc:arena/d zig:arena/zig odin:arena/odin; do
-            toolchain="${profile%%:*}"
-            directory="${profile#*:}"
-            target/release/ccx replay "repeatability/capsule-ubuntu-24.04-$toolchain.json" --dir "$directory"
+          for profile in cpp-gcc:gcc:arena/good c-gcc:gcc:arena/c-multifile rust:rust:arena/rust d-gdc:gdc:arena/d zig:zig:arena/zig odin:odin:arena/odin; do
+            profile_id="${profile%%:*}"
+            spec="${profile#*:}"
+            toolchain="${spec%%:*}"
+            directory="${spec#*:}"
+            target/release/ccx replay "repeatability/capsule-ubuntu-24.04-$profile_id.json" --dir "$directory"
           done
