@@ -14,12 +14,12 @@ selectable submission language.
 
 ## Quick start
 
-Requirements: Rust 1.85 or later and Docker with Linux-container support. The
-CI workflow is configured to build and test the CLI on Linux, Windows, and
-macOS, but no hosted workflow run is recorded yet. Local end-to-end Docker
-measurements are verified on x86-64 Linux. See
-[platform support](PLATFORM_SUPPORT.md) for host/compiler options and their
-validation status.
+Requirements: Rust 1.85 or later and Docker with Linux-container support.
+Hosted native CLI checks pass on Ubuntu 24.04, Windows Server 2022, macOS 15
+Intel, and macOS 14 Apple Silicon. End-to-end Docker builds, execution, and
+measurements are verified on x86-64 Linux; Windows and macOS Docker Desktop
+integration remains unverified. See [platform support](PLATFORM_SUPPORT.md) for
+host/compiler options and their validation status.
 Debian package versions and the archive snapshot are pinned in the Dockerfiles
 and `docker/toolchains.lock.json`.
 The first image build needs access to the pinned Debian snapshot unless its

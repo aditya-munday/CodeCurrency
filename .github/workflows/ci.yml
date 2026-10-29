@@ -93,11 +93,12 @@ jobs:
       - run: target/release/ccx asm --dir arena/odin-multifile --format json
       - run: target/release/ccx measure --dir arena/odin-multifile --size good --seed 42 --repeat 2 --format json
       - run: target/release/ccx replay arena/odin-multifile/capsule.json --format json
-      - run: target/release/ccx init --problem sorted-pair-sum --language go --toolchain go --dir arena/go
-      - run: target/release/ccx test --dir arena/go --hidden --format json
-      - run: target/release/ccx asm --dir arena/go
-      - run: target/release/ccx measure --dir arena/go --size good --seed 2 --repeat 20 --format json
-      - run: target/release/ccx replay arena/go/capsule.json --format json
+      - run: target/release/ccx init --problem sorted-pair-sum --language go --toolchain go --dir arena/go-ci
+      - run: cp arena/go/main.go arena/go-ci/main.go
+      - run: target/release/ccx test --dir arena/go-ci --hidden --format json
+      - run: target/release/ccx asm --dir arena/go-ci
+      - run: target/release/ccx measure --dir arena/go-ci --size good --seed 2 --repeat 20 --format json
+      - run: target/release/ccx replay arena/go-ci/capsule.json --format json
       - run: target/release/ccx test --dir arena/go-multifile --hidden --format json
       - run: target/release/ccx asm --dir arena/go-multifile --format json
   cross-machine-repeatability:
