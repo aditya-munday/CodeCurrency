@@ -8,6 +8,6 @@
   "limits": { "time_ms": 10000, "memory_bytes": 536870912, "output_bytes": 1048576 },
   "seeds": { "public": [1, 2, 3], "hidden": [900000001, 900000002] },
   "reference_language": "cpp",
-  "judge": "exact",
+  "judge": "checker",
   "sizes": { "naive": 800, "good": 20000, "great": 200000 }
 }

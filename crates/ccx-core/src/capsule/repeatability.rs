@@ -23,29 +23,36 @@ pub fn median(values: &[f64]) -> Option<f64> {
 }
 
 /// Summarise a sample into a `Spread`. `spread_pct` is
-/// `(max - min) / median * 100`, so a perfectly stable metric reports 0.
+/// `(max - min) / max(abs(median), 1) * 100`, so a perfectly stable metric reports 0.
 pub fn spread(values: &[f64]) -> Option<Spread> {
     if values.is_empty() {
         return None;
     }
+    let mut sorted = values.to_vec();
+    sorted.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
     let min = values.iter().cloned().fold(f64::INFINITY, f64::min);
     let max = values.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
-    let med = median(values)?;
-    let spread_pct = if med == 0.0 {
-        if max == min {
-            0.0
-        } else {
-            f64::INFINITY
-        }
+    let n = sorted.len();
+    let med = if n % 2 == 1 {
+        sorted[n / 2]
     } else {
-        (max - min) / med * 100.0
+        (sorted[n / 2 - 1] + sorted[n / 2]) / 2.0
     };
+    let spread_pct = (max - min) / med.abs().max(1.0) * 100.0;
     Some(Spread {
+        samples: n as u32,
         min,
         max,
         median: med,
         spread_pct,
+        p95: Some(nearest_rank_percentile_sorted(&sorted, 0.95)),
+        p99: Some(nearest_rank_percentile_sorted(&sorted, 0.99)),
     })
+}
+
+fn nearest_rank_percentile_sorted(sorted: &[f64], p: f64) -> f64 {
+    let rank = (p * sorted.len() as f64).ceil() as usize;
+    sorted[rank.saturating_sub(1).min(sorted.len() - 1)]
 }
 
 /// Deterministic xorshift64* PRNG.
@@ -136,6 +143,28 @@ mod tests {
     fn spread_is_relative_to_median() {
         let s = spread(&[90.0, 100.0, 110.0]).unwrap();
         assert!((s.spread_pct - 20.0).abs() < 1e-9);
+    }
+
+    #[test]
+    fn zero_median_uses_one_unit_as_the_spread_baseline() {
+        let s = spread(&[0.0, 0.0, 1.0]).unwrap();
+        assert_eq!(s.median, 0.0);
+        assert_eq!(s.spread_pct, 100.0);
+    }
+
+    #[test]
+    fn spread_records_observed_tail_percentiles() {
+        let s = spread(&(1..=100).map(f64::from).collect::<Vec<_>>()).unwrap();
+        assert_eq!(s.median, 50.5);
+        assert_eq!(s.p95, Some(95.0));
+        assert_eq!(s.p99, Some(99.0));
+    }
+
+    #[test]
+    fn tail_percentiles_use_nearest_rank_for_small_samples() {
+        let s = spread(&(1..=14).map(f64::from).collect::<Vec<_>>()).unwrap();
+        assert_eq!(s.p95, Some(14.0));
+        assert_eq!(s.p99, Some(14.0));
     }
 
     #[test]

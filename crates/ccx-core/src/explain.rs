@@ -162,8 +162,16 @@ pub fn explain(capsule: &Capsule, rules: &Ruleset) -> Vec<Hint> {
                             branch_count
                         ),
                         evidence: vec![
-                            Evidence { metric: "branch_misses".into(), value: misses, unit: "count".into() },
-                            Evidence { metric: "branches".into(), value: branch_count, unit: "count".into() },
+                            Evidence {
+                                metric: "branch_misses".into(),
+                                value: misses,
+                                unit: "count".into(),
+                            },
+                            Evidence {
+                                metric: "branches".into(),
+                                value: branch_count,
+                                unit: "count".into(),
+                            },
                         ],
                         confidence: Confidence::Likely,
                     });
@@ -189,8 +197,16 @@ pub fn explain(capsule: &Capsule, rules: &Ruleset) -> Vec<Hint> {
                         rate * 100.0
                     ),
                     evidence: vec![
-                        Evidence { metric: "cache_misses".into(), value: misses, unit: "count".into() },
-                        Evidence { metric: "memory_refs".into(), value: refs, unit: "count".into() },
+                        Evidence {
+                            metric: "cache_misses".into(),
+                            value: misses,
+                            unit: "count".into(),
+                        },
+                        Evidence {
+                            metric: "memory_refs".into(),
+                            value: refs,
+                            unit: "count".into(),
+                        },
                     ],
                     confidence: Confidence::Likely,
                 });
@@ -207,7 +223,11 @@ pub fn explain(capsule: &Capsule, rules: &Ruleset) -> Vec<Hint> {
                      solution is probably materialising something it could stream.",
                     peak as u64 / (1024 * 1024)
                 ),
-                evidence: vec![Evidence { metric: "peak_memory".into(), value: peak, unit: "bytes".into() }],
+                evidence: vec![Evidence {
+                    metric: "peak_memory".into(),
+                    value: peak,
+                    unit: "bytes".into(),
+                }],
                 confidence: Confidence::Certain,
             });
         }
@@ -330,10 +350,16 @@ pub fn diff(before: &Capsule, after: &Capsule) -> CapsuleDiff {
                 })
             });
 
-        let significant = match spread {
-            Some(s) if delta.abs() <= s => Significance::WithinNoise,
-            Some(_) => Significance::Real,
-            None => Significance::Unknown,
+        let significant = if before.host.fingerprint != after.host.fingerprint
+            && (b.machine_dependent() || a.machine_dependent())
+        {
+            Significance::Unknown
+        } else {
+            match spread {
+                Some(s) if delta.abs() <= s => Significance::WithinNoise,
+                Some(_) => Significance::Real,
+                None => Significance::Unknown,
+            }
         };
 
         deltas.push(MetricDelta {
@@ -352,9 +378,15 @@ pub fn diff(before: &Capsule, after: &Capsule) -> CapsuleDiff {
         from_id: before.capsule_id.clone(),
         to_id: after.capsule_id.clone(),
         deltas,
-        verdict_changed: (before.verdict != after.verdict)
-            .then(|| (format!("{:?}", before.verdict), format!("{:?}", after.verdict))),
-        toolchain_changed: before.toolchain.image_digest != after.toolchain.image_digest,
+        verdict_changed: (before.verdict != after.verdict).then(|| {
+            (
+                format!("{:?}", before.verdict),
+                format!("{:?}", after.verdict),
+            )
+        }),
+        toolchain_changed: before.toolchain.name != after.toolchain.name
+            || before.toolchain.version != after.toolchain.version
+            || !before.toolchain.same_environment(&after.toolchain),
         host_changed: before.host.fingerprint != after.host.fingerprint,
     }
 }
@@ -362,6 +394,7 @@ pub fn diff(before: &Capsule, after: &Capsule) -> CapsuleDiff {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::capsule::{Capsule, Metric, MetricKind, MetricMethod};
 
     #[test]
     fn ruleset_id_is_stable_and_changes_with_thresholds() {
@@ -380,5 +413,44 @@ mod tests {
         let spread: f64 = 5.0;
         let delta: f64 = 1.0;
         assert!(delta.abs() <= spread);
+    }
+
+    #[test]
+    fn equivalent_rebuilt_toolchain_images_are_the_same_environment() {
+        let source = include_str!("../tests/fixtures/capsule-v2.json");
+        let mut before = Capsule::from_json(source).unwrap();
+        let mut after = before.clone();
+        before.toolchain.environment_fingerprint = Some("sha256:environment".into());
+        after.toolchain.environment_fingerprint = Some("sha256:environment".into());
+        after.toolchain.image_digest = "sha256:rebuilt-image".into();
+        assert!(!diff(&before, &after).toolchain_changed);
+    }
+
+    #[test]
+    fn getrusage_changes_across_hosts_are_inconclusive() {
+        let source = include_str!("../tests/fixtures/capsule-v2.json");
+        let mut before = Capsule::from_json(source).unwrap();
+        let mut after = before.clone();
+        before.host.fingerprint = "host-a".into();
+        after.host.fingerprint = "host-b".into();
+        before.metrics.push(Metric::count(
+            "user_cpu_time",
+            100,
+            MetricKind::Measured,
+            MetricMethod::Getrusage,
+        ));
+        after.metrics.push(Metric::count(
+            "user_cpu_time",
+            200,
+            MetricKind::Measured,
+            MetricMethod::Getrusage,
+        ));
+        let comparison = diff(&before, &after);
+        let cpu_time = comparison
+            .deltas
+            .iter()
+            .find(|delta| delta.name == "user_cpu_time")
+            .unwrap();
+        assert_eq!(cpu_time.significant, Significance::Unknown);
     }
 }

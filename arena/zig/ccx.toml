@@ -1,0 +1,5 @@
+# CodeCurrency solution.
+problem = "../../problems/sorted-pair-sum"
+language = "zig"
+toolchain = "zig"
+opt_level = "-O2"

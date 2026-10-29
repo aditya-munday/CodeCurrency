@@ -2,3 +2,7 @@
 **/.ccx/
 **/capsule.json
 *.o
+__pycache__/
+*.pyc
+docker/*.tar.gz
+docker/*.tar.xz

@@ -1,0 +1,4 @@
+problem = "../../problems/sorted-pair-sum"
+language = "c"
+toolchain = "gcc"
+opt_level = "-O2"

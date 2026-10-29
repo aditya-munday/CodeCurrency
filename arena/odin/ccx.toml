@@ -1,0 +1,5 @@
+# CodeCurrency solution.
+problem = "../../problems/sorted-pair-sum"
+language = "odin"
+toolchain = "odin"
+opt_level = "-O2"

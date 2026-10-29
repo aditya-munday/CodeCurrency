@@ -146,6 +146,10 @@ pub struct Problem {
 
 impl Problem {
     pub fn load(root: &Path) -> Result<Problem, ProblemError> {
+        let root = root.canonicalize().map_err(|source| ProblemError::Io {
+            path: root.to_path_buf(),
+            source,
+        })?;
         let meta_path = root.join("problem.json");
         let text = std::fs::read_to_string(&meta_path).map_err(|source| ProblemError::Io {
             path: meta_path.clone(),
@@ -153,10 +157,7 @@ impl Problem {
         })?;
         let meta: ProblemMeta = serde_json::from_str(&text)
             .map_err(|e| ProblemError::Metadata(format!("problem.json: {e}")))?;
-        let problem = Problem {
-            root: root.to_path_buf(),
-            meta,
-        };
+        let problem = Problem { root, meta };
         problem.check_required_files()?;
         Ok(problem)
     }
@@ -177,6 +178,7 @@ impl Problem {
             "problem.json".to_string(),
             "statement.md".to_string(),
             "generator.c".to_string(),
+            "brute_force.cpp".to_string(),
             "reference.cpp".to_string(),
             "editorial.md".to_string(),
             "hints.md".to_string(),

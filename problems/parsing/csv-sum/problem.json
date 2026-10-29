@@ -1,0 +1,13 @@
+{
+  "id": "parsing/csv-sum",
+  "title": "Sum a Delimited Integer Stream",
+  "category": "parsing",
+  "difficulty": "medium",
+  "ranked_metric": "instructions",
+  "summary": "Parse a comma-separated integer row and sum its values. Compare formatted stream extraction, character-at-a-time parsing, and a buffered scanner.",
+  "limits": { "time_ms": 10000, "memory_bytes": 536870912, "output_bytes": 1048576 },
+  "seeds": { "public": [101, 211, 307], "hidden": [900001001, 900001103] },
+  "reference_language": "cpp",
+  "judge": "exact",
+  "sizes": { "naive": 20000, "good": 200000, "great": 500000 }
+}

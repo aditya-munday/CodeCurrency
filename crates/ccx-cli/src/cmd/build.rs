@@ -19,6 +19,7 @@ use serde::Serialize;
 use std::path::Path;
 
 /// Guest path of the compiled binary inside scratch.
+#[allow(dead_code)]
 pub const GUEST_BINARY: &str = "/work/scratch/sol";
 
 /// The result of a successful build.
@@ -46,6 +47,76 @@ pub struct BuildReport {
 /// algorithms, not compiler incantations. `-O2` plus the standard version is
 /// the whole set, and both must pass the flag checker.
 fn build_flags(sol: &Solution) -> anyhow::Result<(Vec<String>, Vec<Rejected>)> {
+    if sol.language == Language::Rust {
+        let opt = sol.opt_level.trim_start_matches("-O");
+        return Ok((
+            vec!["--edition=2021".to_string(), format!("-Copt-level={opt}")],
+            Vec::new(),
+        ));
+    }
+    if sol.language == Language::D {
+        let flags = vec![sol.opt_level.clone()];
+        let check = check_flags(&flags);
+        if !check.ok() {
+            return Err(Fixable::new("the toolchain refused a default build flag")
+                .fix("this is an engine bug: the default flag set must always be accepted")
+                .fix(format!("refused: {:#?}", check.rejected))
+                .into_error());
+        }
+        return Ok((check.accepted, check.rejected));
+    }
+    if sol.language == Language::Zig {
+        let mode = match sol.opt_level.as_str() {
+            "-O0" => "Debug",
+            "-Os" | "-Oz" => "ReleaseSmall",
+            _ => "ReleaseFast",
+        };
+        return Ok((
+            vec![
+                "build-exe".to_string(),
+                format!("-O{mode}"),
+                "-lc".to_string(),
+            ],
+            Vec::new(),
+        ));
+    }
+    if sol.language == Language::Odin {
+        let optimization = if sol.opt_level == "-O0" {
+            "-debug"
+        } else {
+            "-o:speed"
+        };
+        return Ok((
+            vec![
+                "build".to_string(),
+                "-file".to_string(),
+                optimization.to_string(),
+                "-out:/work/scratch/sol".to_string(),
+            ],
+            Vec::new(),
+        ));
+    }
+    if sol.language == Language::Go {
+        return Ok((
+            vec![
+                "build".to_string(),
+                "-trimpath".to_string(),
+                "-buildvcs=false".to_string(),
+                "-ldflags=-buildid=".to_string(),
+            ],
+            Vec::new(),
+        ));
+    }
+    if sol.language == Language::AsmX86_64 {
+        return Ok((
+            vec![
+                "-ffile-prefix-map=/in=.".to_string(),
+                "-fno-ident".to_string(),
+                "-Wl,--build-id=none".to_string(),
+            ],
+            Vec::new(),
+        ));
+    }
     let std_flag = match sol.language {
         Language::C => "-std=c17",
         _ => "-std=c++20",
@@ -61,7 +132,7 @@ fn build_flags(sol: &Solution) -> anyhow::Result<(Vec<String>, Vec<Rejected>)> {
     Ok((check.accepted, check.rejected))
 }
 
-/// Compile the solution. The binary lands in `.ccx/out/sol`.
+/// Compile the solution. The binary lands in `.ccx/out/sol-<sha256>`.
 ///
 /// This delegates to the pipeline's shared builder so `build`, `test`,
 /// `measure`, and `replay` all compile the same way: the compiler runs as the
@@ -71,27 +142,46 @@ pub fn compile(sol: &Solution) -> anyhow::Result<BuildReport> {
     let tc = sol.toolchain()?;
     let program = pipeline.build_solution()?;
 
-    let host_binary = program.host_dir.join("sol");
-    let bytes = std::fs::read(&host_binary)?;
-    let (flags, rejected) = build_flags(sol)?;
+    let temporary_binary = program.host_dir.join("sol");
+    let bytes = std::fs::read(&temporary_binary)?;
+    let binary_sha256 = ccx_core::capsule::sha256_hex(&bytes);
+    let host_binary = sol.out_dir().join(format!("sol-{binary_sha256}"));
+    std::fs::create_dir_all(sol.out_dir())?;
+    if host_binary.exists() {
+        if std::fs::read(&host_binary)? != bytes {
+            anyhow::bail!("content-addressed build artifact did not match its SHA-256 path");
+        }
+    } else {
+        match std::fs::rename(&temporary_binary, &host_binary) {
+            Ok(()) => {}
+            Err(error) if host_binary.exists() => {
+                if std::fs::read(&host_binary)? != bytes {
+                    return Err(error.into());
+                }
+            }
+            Err(error) => return Err(error.into()),
+        }
+    }
+    let (_flags, rejected) = build_flags(sol)?;
 
     // The argv is reconstructed for the report: it is what a person needs to
     // reproduce the build by hand.
-    let driver = ccx_core::toolchain::driver_for(sol.toolchain_name, sol.language);
-    let mut compiler_argv = vec![driver.to_string()];
-    compiler_argv.extend(flags);
-    compiler_argv.push(format!("-o {GUEST_BINARY}"));
+    let compiler_argv = pipeline.build_argv();
 
     Ok(BuildReport {
-        toolchain: format!("{:?}", tc.name).to_lowercase(),
+        toolchain: tc.name.profile_id().into(),
         version: tc.version,
         image_digest: tc.image_digest,
-        opt_level: sol.opt_level.clone(),
+        opt_level: if sol.language == Language::AsmX86_64 {
+            "none".to_string()
+        } else {
+            sol.opt_level.clone()
+        },
         compiler_argv,
         rejected_flags: rejected,
         binary: host_binary.display().to_string(),
         binary_bytes: bytes.len() as u64,
-        binary_sha256: ccx_core::capsule::sha256_hex(&bytes),
+        binary_sha256,
         warnings: Vec::new(),
     })
 }

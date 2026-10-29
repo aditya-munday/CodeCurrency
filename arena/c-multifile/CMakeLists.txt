@@ -1,0 +1,5 @@
+cmake_minimum_required(VERSION 3.31)
+project(CodeCurrencyCMultiFile LANGUAGES C)
+set(CMAKE_C_STANDARD 17)
+set(CMAKE_C_STANDARD_REQUIRED ON)
+add_executable(ccx_solution main.c pair_count.c)

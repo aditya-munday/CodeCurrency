@@ -17,6 +17,7 @@ pub struct DiffReport {
     pub real_changes: Vec<String>,
     /// Metrics where the change is inside the noise.
     pub noise_only: Vec<String>,
+    pub inconclusive: Vec<String>,
     /// Whether the two capsules are even comparable.
     pub comparable: bool,
     pub warnings: Vec<String>,
@@ -53,21 +54,25 @@ pub fn run(format: Format, a: &std::path::Path, b: &std::path::Path) -> anyhow::
         warnings.push("different languages".to_string());
     }
     if before.host.fingerprint != after.host.fingerprint {
-        warnings.push("recorded on different machines: indicative metrics are not comparable".into());
+        warnings.push(
+            "recorded on different machines: machine-dependent metrics are not comparable".into(),
+        );
     }
 
     let comparable = before.problem.id == after.problem.id
-        && before.toolchain.image_digest == after.toolchain.image_digest
+        && before.toolchain.same_environment(&after.toolchain)
         && before.source.language == after.source.language;
 
     // Only deterministic metrics can be called a real change; an indicative
     // metric inside its interval is noise by construction.
     let mut real_changes = Vec::new();
     let mut noise_only = Vec::new();
+    let mut inconclusive = Vec::new();
     for d in &diff.deltas {
         match d.significant {
             Significance::Real => real_changes.push(d.name.clone()),
-            Significance::WithinNoise | Significance::Unknown => noise_only.push(d.name.clone()),
+            Significance::WithinNoise => noise_only.push(d.name.clone()),
+            Significance::Unknown => inconclusive.push(d.name.clone()),
         }
     }
 
@@ -75,11 +80,13 @@ pub fn run(format: Format, a: &std::path::Path, b: &std::path::Path) -> anyhow::
     diff.deltas.sort_by(|x, y| x.name.cmp(&y.name));
     real_changes.sort();
     noise_only.sort();
+    inconclusive.sort();
 
     let report = DiffReport {
         diff,
         real_changes,
         noise_only,
+        inconclusive,
         comparable,
         warnings,
     };
@@ -89,14 +96,19 @@ pub fn run(format: Format, a: &std::path::Path, b: &std::path::Path) -> anyhow::
         || {
             println!(
                 "{} -> {}",
-                &report.diff.from_id.clone().unwrap_or_default()[..12.min(report.diff.from_id.as_deref().unwrap_or("").len())],
-                &report.diff.to_id.clone().unwrap_or_default()[..12.min(report.diff.to_id.as_deref().unwrap_or("").len())],
+                &report.diff.from_id.clone().unwrap_or_default()
+                    [..12.min(report.diff.from_id.as_deref().unwrap_or("").len())],
+                &report.diff.to_id.clone().unwrap_or_default()
+                    [..12.min(report.diff.to_id.as_deref().unwrap_or("").len())],
             );
             for w in &report.warnings {
                 println!("  warning: {w}");
             }
             println!();
-            println!("  {:<18} {:>14} {:>14} {:>12}  {}", "metric", "before", "after", "change", "verdict");
+            println!(
+                "  {:<18} {:>14} {:>14} {:>12}  {}",
+                "metric", "before", "after", "change", "verdict"
+            );
             for d in &report.diff.deltas {
                 let pct = d
                     .delta_pct
@@ -121,6 +133,9 @@ pub fn run(format: Format, a: &std::path::Path, b: &std::path::Path) -> anyhow::
             }
             if !report.noise_only.is_empty() {
                 println!("  within noise:   {}", report.noise_only.join(", "));
+            }
+            if !report.inconclusive.is_empty() {
+                println!("  inconclusive:   {}", report.inconclusive.join(", "));
             }
         },
         &report,

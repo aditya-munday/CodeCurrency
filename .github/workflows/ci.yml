@@ -1,0 +1,143 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+env:
+  RUSTFLAGS: "-D warnings"
+
+jobs:
+  host-platform:
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [ubuntu-24.04, windows-2022, macos-15-intel, macos-14]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@1.85.1
+        with:
+          components: rustfmt
+      - run: cargo fmt --all -- --check
+      - run: cargo test --release
+      - run: cargo build --release
+  rust:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@1.85.1
+        with:
+          components: rustfmt
+      - run: bash scripts/test-runner-artifact-cap.sh
+  container-engine:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@1.85.1
+        with:
+          components: rustfmt
+      - run: python3 -m unittest scripts/test_compare_capsules.py
+      - run: scripts/pin-toolchains.sh
+      - run: bash scripts/test-alloc-shim.sh
+      - run: cargo test --release
+      - run: cargo build --release
+      - run: target/release/ccx doctor --format json
+      - run: target/release/ccx validate problems/sorted-pair-sum --format json
+      - run: target/release/ccx validate problems/data-structures/top-k --format json
+      - run: target/release/ccx validate problems/parsing/csv-sum --format json
+      - run: target/release/ccx validate problems/queues/fifo-stream --format json
+      - run: target/release/ccx validate problems/memory/allocation-layout --format json
+      - run: target/release/ccx build --dir arena/multi-file --format json
+      - run: target/release/ccx test --dir arena/multi-file --hidden --format json
+      - run: target/release/ccx asm --dir arena/multi-file --format json
+      - run: target/release/ccx measure --dir arena/multi-file --size good --seed 42 --repeat 2 --format json
+      - run: target/release/ccx replay arena/multi-file/capsule.json --format json
+      - run: target/release/ccx matrix --dir arena/multi-file --toolchain gcc --build-system cmake --cmake-generator ninja --cmake-generator make --size good --seed 42 --repeat 2 --format json
+      - run: target/release/ccx matrix --dir arena/multi-file --toolchain gcc --toolchain gcc-13 --toolchain clang --toolchain clang-18 --size good --seed 42 --repeat 2 --format table
+      - run: target/release/ccx build --dir arena/c-multifile --format json
+      - run: target/release/ccx test --dir arena/c-multifile --hidden --format json
+      - run: target/release/ccx asm --dir arena/c-multifile --format json
+      - run: target/release/ccx measure --dir arena/c-multifile --size good --seed 42 --repeat 2 --format json
+      - run: target/release/ccx replay arena/c-multifile/capsule.json --format json
+      - run: target/release/ccx matrix --dir arena/c-multifile --toolchain gcc --build-system cmake --cmake-generator ninja --cmake-generator make --size good --seed 42 --repeat 2 --format json
+      - run: scripts/safety-suite.sh
+      - run: scripts/test-problem-suites.sh
+      - run: python3 scripts/test-experiment.py target/release/ccx
+      - run: target/release/ccx init --problem sorted-pair-sum --language cpp --toolchain gcc --build-system cmake --dir arena/cmake-ci --format json
+      - run: target/release/ccx build --dir arena/cmake-ci --format json
+      - run: target/release/ccx init --problem sorted-pair-sum --language cpp --toolchain gcc --build-system custom --dir arena/custom-command-ci --run-command-arg env --run-command-arg CCX_RUN=1 --run-command-arg '{binary}' --run-command-arg '{args}' --format json
+      - run: target/release/ccx build --dir arena/custom-command-ci --format json
+      - run: target/release/ccx test --dir arena/custom-command-ci --hidden --format json
+      - run: target/release/ccx init --problem sorted-pair-sum --language c --toolchain clang --build-system cmake --dir arena/cmake-clang-ci --format json
+      - run: target/release/ccx build --dir arena/cmake-clang-ci --format json
+      - run: target/release/ccx measure --dir arena/good --size naive --seed 1 --repeat 2 --format json
+      - run: target/release/ccx replay arena/good/capsule.json --format json
+      - run: target/release/ccx test --dir arena/rust --hidden --format json
+      - run: target/release/ccx asm --dir arena/rust --format json
+      - run: target/release/ccx measure --dir arena/rust --size good --seed 2 --repeat 2 --format json
+      - run: target/release/ccx replay arena/rust/capsule.json --format json
+      - run: target/release/ccx test --dir arena/d --hidden --format json
+      - run: target/release/ccx asm --dir arena/d --format json
+      - run: target/release/ccx measure --dir arena/d --size good --seed 2 --repeat 2 --format json
+      - run: target/release/ccx replay arena/d/capsule.json --format json
+      - run: target/release/ccx test --dir arena/zig --hidden --format json
+      - run: target/release/ccx asm --dir arena/zig --format json
+      - run: target/release/ccx measure --dir arena/zig --size good --seed 2 --repeat 2 --format json
+      - run: target/release/ccx replay arena/zig/capsule.json --format json
+      - run: target/release/ccx test --dir arena/odin --hidden --format json
+      - run: target/release/ccx measure --dir arena/odin --size good --seed 2 --repeat 2 --format json
+      - run: target/release/ccx replay arena/odin/capsule.json --format json
+      - run: target/release/ccx test --dir arena/odin-multifile --hidden --format json
+      - run: target/release/ccx asm --dir arena/odin-multifile --format json
+      - run: target/release/ccx measure --dir arena/odin-multifile --size good --seed 42 --repeat 2 --format json
+      - run: target/release/ccx replay arena/odin-multifile/capsule.json --format json
+      - run: target/release/ccx init --problem sorted-pair-sum --language go --toolchain go --dir arena/go
+      - run: target/release/ccx test --dir arena/go --hidden --format json
+      - run: target/release/ccx asm --dir arena/go
+      - run: target/release/ccx measure --dir arena/go --size good --seed 2 --repeat 20 --format json
+      - run: target/release/ccx replay arena/go/capsule.json --format json
+      - run: target/release/ccx test --dir arena/go-multifile --hidden --format json
+      - run: target/release/ccx asm --dir arena/go-multifile --format json
+  cross-machine-repeatability:
+    name: Repeatability on ${{ matrix.runner }}
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [ubuntu-22.04, ubuntu-24.04, ubuntu-26.04]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@1.85.1
+      - run: scripts/pin-toolchains.sh
+      - run: cargo build --release
+      - run: target/release/ccx doctor --format json
+      - run: target/release/ccx measure --dir arena/good --size good --seed 42 --repeat 20 --out "$RUNNER_TEMP/capsule.json" --format json
+      - run: cp "$RUNNER_TEMP/capsule.json" "$RUNNER_TEMP/capsule-${{ matrix.runner }}.json"
+      - run: cp docker/toolchains.lock.json "$RUNNER_TEMP/toolchains-${{ matrix.runner }}.json"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: repeatability-${{ matrix.runner }}
+          path: |
+            ${{ runner.temp }}/capsule-${{ matrix.runner }}.json
+            ${{ runner.temp }}/toolchains-${{ matrix.runner }}.json
+          if-no-files-found: error
+  compare-cross-machine-repeatability:
+    needs: cross-machine-repeatability
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@1.85.1
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: repeatability-*
+          path: repeatability
+          merge-multiple: true
+      - run: scripts/pin-toolchains.sh
+      - run: cargo build --release
+      - run: target/release/ccx doctor --format json
+      - run: python3 -m unittest scripts/test_compare_capsules.py
+      - run: python3 scripts/compare-capsules.py repeatability
+      - run: target/release/ccx replay repeatability/capsule-ubuntu-22.04.json --dir arena/good
+      - run: target/release/ccx replay repeatability/capsule-ubuntu-24.04.json --dir arena/good
+      - run: target/release/ccx replay repeatability/capsule-ubuntu-26.04.json --dir arena/good

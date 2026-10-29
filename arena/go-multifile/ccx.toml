@@ -1,0 +1,4 @@
+problem = "../../problems/sorted-pair-sum"
+language = "go"
+toolchain = "go"
+opt_level = "-O2"

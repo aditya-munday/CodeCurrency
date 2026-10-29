@@ -1,0 +1,252 @@
+{
+  "schema_version": 2,
+  "capsule_id": "dc6de8a45abe5c7cb767d7547a23d6e2d21a499de7833de9946b557f5cbd6bd1",
+  "created_at": "2026-10-26T15:05:14Z",
+  "problem": {
+    "id": "sorted-pair-sum",
+    "statement_sha256": "32dbfbfba61897c8b6f0e45f9b38df081f780acd78d82425d9ebc340fa8de195"
+  },
+  "source": {
+    "language": "cpp",
+    "entry": "main.cpp",
+    "files": {
+      ".gitignore": "sha256:46ea7d8bb40f92a6fbd84f619d337800725940f3169452a0e124d3b6d76d0f29",
+      "ccx.toml": "sha256:c5c890d3d6952d9d4f6c89504aa3c9a551fbf65e4e4feb2974c6354babddd997",
+      "main.cpp": "sha256:66db75720cc62e85a52a905f6f4a534fe6d13a8f107cb630135c43de663cf330"
+    },
+    "source_sha256": "39b014a3d9ed8364dbf4b8e3ad487f0622a5eb986659b014a2a2ed5abeab5f31"
+  },
+  "toolchain": {
+    "name": "gcc",
+    "version": "14.2.0",
+    "image": "ccx-gcc",
+    "image_digest": "sha256:38115e07ea83c0427003ca8fe86fff47303a5ff30fe8724e456a081a818ce977",
+    "libc": "glibc 2.41"
+  },
+  "build": {
+    "argv": [
+      "g++",
+      "-O2",
+      "-std=c++20",
+      "-ffile-prefix-map=/in=.",
+      "-fno-ident",
+      "-Wl,--build-id=none",
+      "-o",
+      "/prog/sol",
+      "/src0/main.cpp",
+      "-static-libstdc++",
+      "-static-libgcc",
+      "-Wl,--wrap=malloc,--wrap=calloc,--wrap=realloc,--wrap=free",
+      "/opt/ccx/alloc_shim.o"
+    ],
+    "opt_level": "-O2",
+    "env": {
+      "LANG": "C",
+      "LC_ALL": "C",
+      "PATH": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+      "SOURCE_DATE_EPOCH": "0",
+      "TZ": "UTC"
+    },
+    "argv_program": [],
+    "stdin_sha256": "91ad93e2c205af4d014aea8b265c4abbecbb5f2aec37a0eb95fbf4e1e843ac6a",
+    "stack_bytes": 8388608
+  },
+  "harness": {
+    "version": "0.1.0",
+    "metric_method": "cachegrind",
+    "ruleset": "e19a4134bad94934"
+  },
+  "input": {
+    "generator": "generator.c",
+    "seed": 1,
+    "seed_set": "public",
+    "size": 800
+  },
+  "host": {
+    "cpu_model": "12th Gen Intel(R) Core(TM) i5-12450HX",
+    "arch": "x86_64",
+    "os": "Ubuntu 26.04 LTS",
+    "kernel": "6.18.33.2-microsoft-standard-WSL2",
+    "nproc": 12,
+    "frequency_policy": "unknown",
+    "fingerprint": "42296ce047d3563fbc36f5e395ad98bdeb5d04e4cedd82ccd63004f2786eebc0"
+  },
+  "verdict": "accepted",
+  "metrics": [
+    {
+      "name": "instructions",
+      "value": 805238.0,
+      "unit": "count",
+      "kind": "simulated",
+      "method": "cachegrind",
+      "uncertainty": {
+        "kind": "ci95",
+        "value": 0.0
+      }
+    },
+    {
+      "name": "cache_misses",
+      "value": 3737.0,
+      "unit": "count",
+      "kind": "simulated",
+      "method": "cachegrind",
+      "uncertainty": {
+        "kind": "ci95",
+        "value": 0.0
+      }
+    },
+    {
+      "name": "branch_misses",
+      "value": 9245.0,
+      "unit": "count",
+      "kind": "simulated",
+      "method": "cachegrind",
+      "uncertainty": {
+        "kind": "ci95",
+        "value": 0.0
+      }
+    },
+    {
+      "name": "memory_refs",
+      "value": 1112503.0,
+      "unit": "count",
+      "kind": "simulated",
+      "method": "cachegrind",
+      "uncertainty": {
+        "kind": "ci95",
+        "value": 0.0
+      }
+    },
+    {
+      "name": "branches",
+      "value": 140786.0,
+      "unit": "count",
+      "kind": "simulated",
+      "method": "cachegrind",
+      "uncertainty": {
+        "kind": "ci95",
+        "value": 0.0
+      }
+    },
+    {
+      "name": "allocations",
+      "value": 2.0,
+      "unit": "count",
+      "kind": "measured",
+      "method": "manual",
+      "uncertainty": {
+        "kind": "ci95",
+        "value": 0.0
+      }
+    },
+    {
+      "name": "allocated_bytes",
+      "value": 80128.0,
+      "unit": "bytes",
+      "kind": "measured",
+      "method": "manual",
+      "uncertainty": {
+        "kind": "ci95",
+        "value": 0.0
+      }
+    },
+    {
+      "name": "peak_memory",
+      "value": 1753088.0,
+      "unit": "bytes",
+      "kind": "indicative",
+      "method": "getrusage",
+      "uncertainty": {
+        "kind": "ci95",
+        "value": 8192.0
+      }
+    },
+    {
+      "name": "binary_size",
+      "value": 281960.0,
+      "unit": "bytes",
+      "kind": "measured",
+      "method": "stat",
+      "uncertainty": {
+        "kind": "ci95",
+        "value": 0.0
+      }
+    },
+    {
+      "name": "wall_clock",
+      "value": 936909.5,
+      "unit": "nanoseconds",
+      "kind": "indicative",
+      "method": "wall_clock",
+      "uncertainty": {
+        "kind": "ci95",
+        "value": 125043.5
+      }
+    }
+  ],
+  "repeatability": {
+    "runs": 2,
+    "per_metric": {
+      "allocated_bytes": {
+        "min": 80128.0,
+        "max": 80128.0,
+        "median": 80128.0,
+        "spread_pct": 0.0
+      },
+      "allocations": {
+        "min": 2.0,
+        "max": 2.0,
+        "median": 2.0,
+        "spread_pct": 0.0
+      },
+      "binary_size": {
+        "min": 281960.0,
+        "max": 281960.0,
+        "median": 281960.0,
+        "spread_pct": 0.0
+      },
+      "branch_misses": {
+        "min": 9245.0,
+        "max": 9245.0,
+        "median": 9245.0,
+        "spread_pct": 0.0
+      },
+      "branches": {
+        "min": 140786.0,
+        "max": 140786.0,
+        "median": 140786.0,
+        "spread_pct": 0.0
+      },
+      "cache_misses": {
+        "min": 3737.0,
+        "max": 3737.0,
+        "median": 3737.0,
+        "spread_pct": 0.0
+      },
+      "instructions": {
+        "min": 805238.0,
+        "max": 805238.0,
+        "median": 805238.0,
+        "spread_pct": 0.0
+      },
+      "memory_refs": {
+        "min": 1112503.0,
+        "max": 1112503.0,
+        "median": 1112503.0,
+        "spread_pct": 0.0
+      },
+      "peak_memory": {
+        "min": 1744896.0,
+        "max": 1761280.0,
+        "median": 1753088.0,
+        "spread_pct": 0.9345794392523363
+      },
+      "wall_clock": {
+        "min": 811866.0,
+        "max": 1061953.0,
+        "median": 936909.5,
+        "spread_pct": 26.69275954614613
+      }
+    }
+  }
+}

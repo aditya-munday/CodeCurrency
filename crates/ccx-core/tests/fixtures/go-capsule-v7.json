@@ -1,0 +1,243 @@
+{
+  "schema_version": 7,
+  "capsule_id": "0785664756188ece4672e0cad6fe27ff8622806ac8270e190f9d98aea4db31bd",
+  "created_at": "2026-10-26T17:26:52Z",
+  "problem": {
+    "id": "sorted-pair-sum",
+    "statement_sha256": "32dbfbfba61897c8b6f0e45f9b38df081f780acd78d82425d9ebc340fa8de195"
+  },
+  "source": {
+    "language": "go",
+    "entry": "main.go",
+    "files": {
+      ".gitignore": "sha256:46ea7d8bb40f92a6fbd84f619d337800725940f3169452a0e124d3b6d76d0f29",
+      "ccx.toml": "sha256:4a0079b45be3b8280dab78f52f057187a5ae49ae0725685f3d5992eef0ba290f",
+      "main.go": "sha256:5bf33bac81e3f73630ad2ce6b2f8c61616af00c2e46cbab0e16fa9b264a39283",
+      "problem/brute_force.cpp": "sha256:555c80e7196fea2aac6df053dc0246c7b6a5b5d4b64938c338edf1115988ea50",
+      "problem/checker.c": "sha256:b05b90b3b315fcd24e112bbb72a2dc4d67bc4d500bc7d5a8c23fdef5c2def4c5",
+      "problem/editorial.md": "sha256:c2b57d682cf42765b9904ecaf186cd276f83862505a8abe708979d629d9f5670",
+      "problem/generator.c": "sha256:6350e17753a81fe7bd8517c67c24daf4303a3574ca1676dac67876a7bebc339c",
+      "problem/hints.md": "sha256:0db153102dfa57905d464c59556285ed6c4536c62ea6221112c21771984b7ae7",
+      "problem/problem.json": "sha256:c6a831f6dfbfe05e610a885af42416f7c9933724f446692b6f348e5589d2666c",
+      "problem/reference.cpp": "sha256:6475f27cd094c84e8e016756f0682107dfbdbeb2453d14ea415c402cc85e9a23",
+      "problem/solutions/good.cpp": "sha256:66db75720cc62e85a52a905f6f4a534fe6d13a8f107cb630135c43de663cf330",
+      "problem/solutions/great.cpp": "sha256:d9b08380b046c0ba69da0d862158f90bf18e6e41dde6db487fb45733af94cda4",
+      "problem/solutions/naive.cpp": "sha256:b3b8b796c93c78161af1ac11be4f6902f55249443bb80966262c4020092bcb04",
+      "problem/statement.md": "sha256:32dbfbfba61897c8b6f0e45f9b38df081f780acd78d82425d9ebc340fa8de195"
+    },
+    "source_sha256": "45b9767be7a02a9402338e4e681684978d30d233d4c5fc065bec2f6d09dfa060"
+  },
+  "toolchain": {
+    "name": "go",
+    "version": "go1.26.10",
+    "image": "ccx-gcc",
+    "image_digest": "sha256:fc542c2741c4c5858d8368ea073aecf44b19028f1be960466a46db468ce8f1cd",
+    "libc": "glibc 2.41"
+  },
+  "build": {
+    "argv": [
+      "env",
+      "GO111MODULE=off",
+      "GOTOOLCHAIN=local",
+      "GOPROXY=off",
+      "GOSUMDB=off",
+      "GOENV=off",
+      "GOROOT=/usr/local/go",
+      "GOCACHE=/work/scratch/go-cache",
+      "GOTMPDIR=/work/scratch",
+      "go",
+      "build",
+      "-trimpath",
+      "-buildvcs=false",
+      "-ldflags=-buildid=",
+      "-o",
+      "/work/scratch/sol",
+      "/src0/main.go"
+    ],
+    "opt_level": "-O2",
+    "env": {
+      "GO111MODULE": "off",
+      "GOCACHE": "/work/scratch/go-cache",
+      "GODEBUG": "randautoseed=0",
+      "GOENV": "off",
+      "GOMAXPROCS": "1",
+      "GOPROXY": "off",
+      "GOROOT": "/usr/local/go",
+      "GOSUMDB": "off",
+      "GOTMPDIR": "/work/scratch",
+      "GOTOOLCHAIN": "local",
+      "LANG": "C",
+      "LC_ALL": "C",
+      "PATH": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+      "SOURCE_DATE_EPOCH": "0",
+      "TZ": "UTC"
+    },
+    "argv_program": [],
+    "stdin_sha256": "d6f77c91cf3cd786325fd9fe00fc8ee0d2ffe50a371bb2dca34bdb11f5673b4a",
+    "stack_bytes": 8388608
+  },
+  "harness": {
+    "version": "0.2.0",
+    "metric_method": "cachegrind",
+    "ruleset": "e19a4134bad94934"
+  },
+  "input": {
+    "generator": "generator.c",
+    "seed": 2,
+    "seed_set": "public",
+    "size": 20000
+  },
+  "host": {
+    "cpu_model": "12th Gen Intel(R) Core(TM) i5-12450HX",
+    "arch": "x86_64",
+    "os": "Ubuntu 26.04 LTS",
+    "kernel": "6.18.33.2-microsoft-standard-WSL2",
+    "nproc": 12,
+    "frequency_policy": "unknown",
+    "fingerprint": "42296ce047d3563fbc36f5e395ad98bdeb5d04e4cedd82ccd63004f2786eebc0"
+  },
+  "verdict": "accepted",
+  "metrics": [
+    {
+      "name": "instructions",
+      "value": 15364486.5,
+      "unit": "count",
+      "kind": "simulated",
+      "method": "cachegrind",
+      "uncertainty": {
+        "kind": "ci95",
+        "value": 9555.25
+      }
+    },
+    {
+      "name": "cache_misses",
+      "value": 31962.0,
+      "unit": "count",
+      "kind": "simulated",
+      "method": "cachegrind",
+      "uncertainty": {
+        "kind": "ci95",
+        "value": 257.75
+      }
+    },
+    {
+      "name": "branch_misses",
+      "value": 166283.0,
+      "unit": "count",
+      "kind": "simulated",
+      "method": "cachegrind",
+      "uncertainty": {
+        "kind": "ci95",
+        "value": 79.0
+      }
+    },
+    {
+      "name": "memory_refs",
+      "value": 22399859.5,
+      "unit": "count",
+      "kind": "simulated",
+      "method": "cachegrind",
+      "uncertainty": {
+        "kind": "ci95",
+        "value": 11672.0
+      }
+    },
+    {
+      "name": "branches",
+      "value": 2687941.5,
+      "unit": "count",
+      "kind": "simulated",
+      "method": "cachegrind",
+      "uncertainty": {
+        "kind": "ci95",
+        "value": 1031.25
+      }
+    },
+    {
+      "name": "peak_memory",
+      "value": 2654208.0,
+      "unit": "bytes",
+      "kind": "indicative",
+      "method": "getrusage",
+      "uncertainty": {
+        "kind": "ci95",
+        "value": 0.0
+      }
+    },
+    {
+      "name": "binary_size",
+      "value": 2435087.0,
+      "unit": "bytes",
+      "kind": "measured",
+      "method": "stat",
+      "uncertainty": {
+        "kind": "ci95",
+        "value": 0.0
+      }
+    },
+    {
+      "name": "wall_clock",
+      "value": 5056401.0,
+      "unit": "nanoseconds",
+      "kind": "indicative",
+      "method": "wall_clock",
+      "uncertainty": {
+        "kind": "ci95",
+        "value": 136785.75
+      }
+    }
+  ],
+  "repeatability": {
+    "runs": 20,
+    "per_metric": {
+      "binary_size": {
+        "min": 2435087.0,
+        "max": 2435087.0,
+        "median": 2435087.0,
+        "spread_pct": 0.0
+      },
+      "branch_misses": {
+        "min": 166042.0,
+        "max": 166529.0,
+        "median": 166283.0,
+        "spread_pct": 0.29287419640011303
+      },
+      "branches": {
+        "min": 2685984.0,
+        "max": 2707616.0,
+        "median": 2687941.5,
+        "spread_pct": 0.8047794194925745
+      },
+      "cache_misses": {
+        "min": 31162.0,
+        "max": 33462.0,
+        "median": 31962.0,
+        "spread_pct": 7.196045303798261
+      },
+      "instructions": {
+        "min": 15347741.0,
+        "max": 15442528.0,
+        "median": 15364486.5,
+        "spread_pct": 0.616922667737708
+      },
+      "memory_refs": {
+        "min": 22379471.0,
+        "max": 22493365.0,
+        "median": 22399859.5,
+        "spread_pct": 0.508458546358293
+      },
+      "peak_memory": {
+        "min": 2654208.0,
+        "max": 2654208.0,
+        "median": 2654208.0,
+        "spread_pct": 0.0
+      },
+      "wall_clock": {
+        "min": 4831922.0,
+        "max": 9444277.0,
+        "median": 5056401.0,
+        "spread_pct": 91.21814112448754
+      }
+    }
+  }
+}

@@ -7,6 +7,7 @@
 
 use crate::capsule::{Language, ToolchainName};
 use serde::{Deserialize, Serialize};
+use std::collections::BTreeMap;
 
 /// A pinned compiler image.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -15,9 +16,19 @@ pub struct Toolchain {
     pub version: String,
     pub image: String,
     pub image_digest: String,
+    #[serde(default)]
+    pub environment_fingerprint: String,
     pub libc: String,
     /// Compiler binary invoked inside the image.
     pub compiler: String,
+    pub compiler_binaries: Vec<String>,
+    pub compiler_sha256: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Deserialize)]
+pub struct BuildTool {
+    pub version: String,
+    pub binary_sha256: String,
 }
 
 /// Why a flag was rejected.
@@ -42,29 +53,82 @@ impl FlagCheck {
 
 /// Flags that are always allowed, because they only affect code generation.
 const ALLOWED_EXACT: &[&str] = &[
-    "-O0", "-O1", "-O2", "-O3", "-Os", "-Oz", "-Ofast",
-    "-g", "-g0", "-g1", "-g2", "-g3",
-    "-Wall", "-Wextra", "-Wpedantic", "-Werror",
-    "-std=c11", "-std=c17", "-std=c23", "-std=gnu11", "-std=gnu17", "-std=gnu23",
-    "-std=c++14", "-std=c++17", "-std=c++20", "-std=c++23", "-std=gnu++17", "-std=gnu++20",
-    "-march=native", "-mtune=native",
-    "-mavx2", "-mavx512f", "-msse4.2", "-mfma", "-mpopcnt", "-mlzcnt", "-mbmi", "-mbmi2",
-    "-ffast-math", "-fno-fast-math",
-    "-fno-exceptions", "-fno-rtti", "-fomit-frame-pointer", "-fno-omit-frame-pointer",
-    "-funroll-loops", "-fno-unroll-loops",
-    "-flto", "-fno-lto",
-    "-static", "-static-libgcc", "-static-libstdc++",
-    "-pthread", "-no-pie", "-fno-pie",
-    "-fno-stack-protector", "-fstack-protector-strong",
+    "-O0",
+    "-O1",
+    "-O2",
+    "-O3",
+    "-Os",
+    "-Oz",
+    "-Ofast",
+    "-g",
+    "-g0",
+    "-g1",
+    "-g2",
+    "-g3",
+    "-Wall",
+    "-Wextra",
+    "-Wpedantic",
+    "-Werror",
+    "-std=c11",
+    "-std=c17",
+    "-std=c23",
+    "-std=gnu11",
+    "-std=gnu17",
+    "-std=gnu23",
+    "-std=c++14",
+    "-std=c++17",
+    "-std=c++20",
+    "-std=c++23",
+    "-std=gnu++17",
+    "-std=gnu++20",
+    "-march=native",
+    "-mtune=native",
+    "-mavx2",
+    "-mavx512f",
+    "-msse4.2",
+    "-mfma",
+    "-mpopcnt",
+    "-mlzcnt",
+    "-mbmi",
+    "-mbmi2",
+    "-ffast-math",
+    "-fno-fast-math",
+    "-fno-exceptions",
+    "-fno-rtti",
+    "-fomit-frame-pointer",
+    "-fno-omit-frame-pointer",
+    "-funroll-loops",
+    "-fno-unroll-loops",
+    "-flto",
+    "-fno-lto",
+    "-static",
+    "-static-libgcc",
+    "-static-libstdc++",
+    "-pthread",
+    "-no-pie",
+    "-fno-pie",
+    "-fno-stack-protector",
+    "-fstack-protector-strong",
     "-pipe",
     "-c",
 ];
 
 /// Flags allowed only with a validated value.
 const ALLOWED_WITH_VALUE: &[&str] = &[
-    "-I", "-L", "-l", "-D", "-U",
-    "-march=", "-mtune=", "-mcpu=", "-std=", "-o", "-x",
-    "-fmax-errors=", "-falign-functions=", "-falign-loops=",
+    "-I",
+    "-L",
+    "-l",
+    "-D",
+    "-U",
+    "-march=",
+    "-mtune=",
+    "-mcpu=",
+    "-std=",
+    "-o",
+    "-x",
+    "-fmax-errors=",
+    "-falign-functions=",
+    "-falign-loops=",
     "--param",
 ];
 
@@ -168,12 +232,40 @@ pub fn check_flags(flags: &[String]) -> FlagCheck {
 pub fn pinned(name: ToolchainName) -> Option<Toolchain> {
     let lock = include_str!("../../../docker/toolchains.lock.json");
     let parsed: ToolchainLock = serde_json::from_str(lock).ok()?;
-    parsed.toolchains.into_iter().find(|t| t.name == name)
+    let environment_fingerprints = parsed.environment_fingerprints;
+    let profile = parsed.toolchains.into_iter().find(|t| t.name == name)?;
+    let expected_fingerprint = environment_fingerprints.get(&profile.image)?;
+    (expected_fingerprint == &profile.environment_fingerprint
+        && profile
+            .environment_fingerprint
+            .strip_prefix("sha256:")
+            .is_some_and(|digest| {
+                digest.len() == 64 && digest.bytes().all(|byte| byte.is_ascii_hexdigit())
+            }))
+    .then_some(profile)
 }
 
 #[derive(Debug, Clone, Deserialize)]
 struct ToolchainLock {
     toolchains: Vec<Toolchain>,
+    #[serde(default)]
+    harness_sha256_by_image: BTreeMap<String, String>,
+    #[serde(default)]
+    environment_fingerprints: BTreeMap<String, String>,
+    #[serde(default)]
+    build_tools: BTreeMap<String, BuildTool>,
+}
+
+pub fn pinned_harness_fingerprint(image: &str) -> Option<String> {
+    let lock = include_str!("../../../docker/toolchains.lock.json");
+    let parsed: ToolchainLock = serde_json::from_str(lock).ok()?;
+    parsed.harness_sha256_by_image.get(image).cloned()
+}
+
+pub fn pinned_build_tool(name: &str) -> Option<BuildTool> {
+    let lock = include_str!("../../../docker/toolchains.lock.json");
+    let parsed: ToolchainLock = serde_json::from_str(lock).ok()?;
+    parsed.build_tools.get(name).cloned()
 }
 
 /// Language to source-file extension.
@@ -181,6 +273,11 @@ pub fn extension(language: Language) -> &'static str {
     match language {
         Language::C => "c",
         Language::Cpp => "cpp",
+        Language::Rust => "rs",
+        Language::D => "d",
+        Language::Zig => "zig",
+        Language::Odin => "odin",
+        Language::Go => "go",
         Language::AsmX86_64 => "s",
     }
 }
@@ -193,12 +290,35 @@ pub fn extension(language: Language) -> &'static str {
 /// language avoids making every caller remember that.
 pub fn driver_for(toolchain: ToolchainName, language: Language) -> &'static str {
     match (toolchain, language) {
+        (_, Language::Rust) => "rustc",
+        (_, Language::Zig) => "zig",
+        (_, Language::Odin) => "odin",
+        (_, Language::Go) => "go",
+        (ToolchainName::Zig, _) => "zig",
+        (ToolchainName::Odin, _) => "odin",
+        (ToolchainName::Go, _) => "go",
+        (ToolchainName::Gdc, Language::D) => "gdc-14",
+        (
+            ToolchainName::Gcc
+            | ToolchainName::Gcc13
+            | ToolchainName::Clang
+            | ToolchainName::Clang18,
+            Language::D,
+        ) => "gdc-14",
         (ToolchainName::Gcc, Language::Cpp) => "g++",
         (ToolchainName::Gcc, Language::C) => "gcc",
         (ToolchainName::Gcc, Language::AsmX86_64) => "gcc",
+        (ToolchainName::Gcc13, Language::Cpp) => "g++-13",
+        (ToolchainName::Gcc13, Language::C) => "gcc-13",
+        (ToolchainName::Gcc13, Language::AsmX86_64) => "gcc-13",
         (ToolchainName::Clang, Language::Cpp) => "clang++",
         (ToolchainName::Clang, Language::C) => "clang",
         (ToolchainName::Clang, Language::AsmX86_64) => "clang",
+        (ToolchainName::Clang18, Language::Cpp) => "clang++-18",
+        (ToolchainName::Clang18, Language::C) => "clang-18",
+        (ToolchainName::Clang18, Language::AsmX86_64) => "clang-18",
+        (ToolchainName::Rust, _) => "rustc",
+        (ToolchainName::Gdc, _) => "gdc-14",
     }
 }
 
@@ -215,6 +335,69 @@ mod tests {
         let c = check(&["-O2", "-std=c++20", "-Wall", "-march=native"]);
         assert!(c.ok(), "rejected: {:?}", c.rejected);
         assert_eq!(c.accepted.len(), 4);
+    }
+
+    #[test]
+    fn versioned_c_and_cpp_profiles_use_versioned_drivers() {
+        assert_eq!(driver_for(ToolchainName::Gcc13, Language::C), "gcc-13");
+        assert_eq!(driver_for(ToolchainName::Gcc13, Language::Cpp), "g++-13");
+        assert_eq!(driver_for(ToolchainName::Clang18, Language::C), "clang-18");
+        assert_eq!(
+            driver_for(ToolchainName::Clang18, Language::Cpp),
+            "clang++-18"
+        );
+        assert_eq!(ToolchainName::Gcc13.profile_id(), "gcc-13");
+        assert_eq!(ToolchainName::Clang18.profile_id(), "clang-18");
+    }
+
+    #[test]
+    fn d_uses_the_pinned_gdc_driver() {
+        assert_eq!(extension(Language::D), "d");
+        assert_eq!(driver_for(ToolchainName::Gdc, Language::D), "gdc-14");
+    }
+
+    #[test]
+    fn zig_uses_the_pinned_zig_driver() {
+        assert_eq!(extension(Language::Zig), "zig");
+        assert_eq!(driver_for(ToolchainName::Zig, Language::Zig), "zig");
+    }
+
+    #[test]
+    fn odin_uses_the_pinned_odin_driver() {
+        assert_eq!(extension(Language::Odin), "odin");
+        assert_eq!(driver_for(ToolchainName::Odin, Language::Odin), "odin");
+    }
+
+    #[test]
+    fn go_uses_the_pinned_go_driver() {
+        assert_eq!(extension(Language::Go), "go");
+        assert_eq!(driver_for(ToolchainName::Go, Language::Go), "go");
+    }
+
+    #[test]
+    fn cmake_generators_and_build_tools_are_pinned() {
+        for name in ["cmake", "ninja", "make"] {
+            let tool = pinned_build_tool(name).expect("build tool is pinned");
+            assert!(!tool.version.is_empty());
+            assert_eq!(tool.binary_sha256.len(), 64);
+        }
+    }
+
+    #[test]
+    fn supported_gcc_and_clang_versions_have_pinned_image_fingerprints() {
+        for (name, version) in [
+            (ToolchainName::Gcc, "14.2.0"),
+            (ToolchainName::Gcc13, "13.3.0"),
+            (ToolchainName::Clang, "19.1.7"),
+            (ToolchainName::Clang18, "18.1.8"),
+        ] {
+            let profile = pinned(name).expect("compiler profile is pinned");
+            assert_eq!(profile.version, version);
+            assert!(profile.image_digest.starts_with("sha256:"));
+            assert!(profile.environment_fingerprint.starts_with("sha256:"));
+            assert_eq!(profile.compiler_sha256.len(), 64);
+            assert!(!profile.compiler_binaries.is_empty());
+        }
     }
 
     #[test]
