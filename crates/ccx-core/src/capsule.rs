@@ -389,6 +389,21 @@ pub struct Capsule {
 }
 
 impl Capsule {
+    pub fn same_problem_definition(&self, other: &Self) -> bool {
+        self.problem.id == other.problem.id
+            && self.problem.statement_sha256 == other.problem.statement_sha256
+            && self
+                .source
+                .files
+                .iter()
+                .filter(|(path, _)| path.starts_with("problem/"))
+                .eq(other
+                    .source
+                    .files
+                    .iter()
+                    .filter(|(path, _)| path.starts_with("problem/")))
+    }
+
     /// Canonical JSON of the body with `capsule_id` removed and keys sorted.
     /// `serde_json::Value` maps are `BTreeMap`-backed, so serialisation is
     /// already key-sorted, which makes this stable across builds.

@@ -52,6 +52,63 @@ with tempfile.TemporaryDirectory(prefix="ccx-experiment-test-") as temporary:
     assert report["assembly"]["remarks_status"] in ("available", "unavailable")
     assert capsule.is_file()
 
+    same_capsule_diff = subprocess.run(
+        [str(ccx), "diff", str(capsule), str(capsule), "--format", "json"],
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    same_capsule_diff_report = json.loads(same_capsule_diff.stdout)
+    assert same_capsule_diff_report["comparable"] is True
+    assert not same_capsule_diff_report["real_changes"]
+    instruction_diff = next(
+        delta
+        for delta in same_capsule_diff_report["diff"]["deltas"]
+        if delta["name"] == "instructions"
+    )
+    assert instruction_diff["significant"] == "within_noise"
+
+    different_input_capsule = root / "different-input.json"
+    subprocess.run(
+        [
+            str(ccx),
+            "measure",
+            "--dir",
+            str(repo / "arena/good"),
+            "--size",
+            "good",
+            "--seed",
+            "43",
+            "--repeat",
+            "2",
+            "--out",
+            str(different_input_capsule),
+            "--format",
+            "json",
+        ],
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    different_input_diff = subprocess.run(
+        [
+            str(ccx),
+            "diff",
+            str(capsule),
+            str(different_input_capsule),
+            "--format",
+            "json",
+        ],
+        capture_output=True,
+        text=True,
+    )
+    different_input_diff_report = json.loads(different_input_diff.stdout)
+    assert different_input_diff.returncode != 0
+    assert different_input_diff_report["comparable"] is False
+    assert not different_input_diff_report["real_changes"]
+    assert not different_input_diff_report["noise_only"]
+    assert different_input_diff_report["inconclusive"]
+
     replay = subprocess.run(
         [str(ccx), "replay", str(capsule), "--dir", str(repo / "arena/good"), "--format", "json"],
         capture_output=True,

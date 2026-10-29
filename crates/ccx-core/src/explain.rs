@@ -316,6 +316,14 @@ pub struct CapsuleDiff {
 /// noise, and so does the diff.
 pub fn diff(before: &Capsule, after: &Capsule) -> CapsuleDiff {
     let mut deltas = Vec::new();
+    let shared_context = before.same_problem_definition(after)
+        && before.source.language == after.source.language
+        && before.toolchain.name == after.toolchain.name
+        && before.toolchain.version == after.toolchain.version
+        && before.toolchain.same_environment(&after.toolchain)
+        && before.harness.version == after.harness.version
+        && before.build.stdin_sha256.is_some()
+        && before.build.stdin_sha256 == after.build.stdin_sha256;
 
     for b in &before.metrics {
         let Some(a) = after.metrics.iter().find(|m| m.name == b.name) else {
@@ -350,17 +358,20 @@ pub fn diff(before: &Capsule, after: &Capsule) -> CapsuleDiff {
                 })
             });
 
-        let significant = if before.host.fingerprint != after.host.fingerprint
-            && (b.machine_dependent() || a.machine_dependent())
-        {
-            Significance::Unknown
-        } else {
-            match spread {
-                Some(s) if delta.abs() <= s => Significance::WithinNoise,
-                Some(_) => Significance::Real,
-                None => Significance::Unknown,
-            }
-        };
+        let significant =
+            if !shared_context || b.unit != a.unit || b.kind != a.kind || b.method != a.method {
+                Significance::Unknown
+            } else if before.host.fingerprint != after.host.fingerprint
+                && (b.machine_dependent() || a.machine_dependent())
+            {
+                Significance::Unknown
+            } else {
+                match spread {
+                    Some(s) if delta.abs() <= s => Significance::WithinNoise,
+                    Some(_) => Significance::Real,
+                    None => Significance::Unknown,
+                }
+            };
 
         deltas.push(MetricDelta {
             name: b.name.clone(),
@@ -452,5 +463,64 @@ mod tests {
             .find(|delta| delta.name == "user_cpu_time")
             .unwrap();
         assert_eq!(cpu_time.significant, Significance::Unknown);
+    }
+
+    #[test]
+    fn deterministic_changes_across_different_inputs_are_inconclusive() {
+        let source = include_str!("../tests/fixtures/capsule-v11.json");
+        let mut before = Capsule::from_json(source).unwrap();
+        let mut after = before.clone();
+        after.build.stdin_sha256 = Some("different-input".into());
+        after.metrics[0].value += 1000.0;
+        let comparison = diff(&before, &after);
+        let instructions = comparison
+            .deltas
+            .iter()
+            .find(|delta| delta.name == "instructions")
+            .unwrap();
+        assert_eq!(instructions.significant, Significance::Unknown);
+        before.harness.version = "different-harness".into();
+        after.build.stdin_sha256 = before.build.stdin_sha256.clone();
+        let comparison = diff(&before, &after);
+        let instructions = comparison
+            .deltas
+            .iter()
+            .find(|delta| delta.name == "instructions")
+            .unwrap();
+        assert_eq!(instructions.significant, Significance::Unknown);
+    }
+
+    #[test]
+    fn metric_label_changes_are_inconclusive() {
+        let source = include_str!("../tests/fixtures/capsule-v11.json");
+        let before = Capsule::from_json(source).unwrap();
+        let mut after = before.clone();
+        after.metrics[0].unit = "events".into();
+        let comparison = diff(&before, &after);
+        let instructions = comparison
+            .deltas
+            .iter()
+            .find(|delta| delta.name == "instructions")
+            .unwrap();
+        assert_eq!(instructions.significant, Significance::Unknown);
+    }
+
+    #[test]
+    fn problem_bundle_changes_are_inconclusive() {
+        let source = include_str!("../tests/fixtures/capsule-v11.json");
+        let before = Capsule::from_json(source).unwrap();
+        let mut after = before.clone();
+        after
+            .source
+            .files
+            .insert("problem/generator.c".into(), "sha256:different".into());
+        let comparison = diff(&before, &after);
+        let instructions = comparison
+            .deltas
+            .iter()
+            .find(|delta| delta.name == "instructions")
+            .unwrap();
+        assert_eq!(instructions.significant, Significance::Unknown);
+        assert!(!before.same_problem_definition(&after));
     }
 }

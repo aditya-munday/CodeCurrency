@@ -53,6 +53,32 @@ pub fn run(format: Format, a: &std::path::Path, b: &std::path::Path) -> anyhow::
     if before.source.language != after.source.language {
         warnings.push("different languages".to_string());
     }
+    if !before.same_problem_definition(&after) {
+        warnings.push("problem definition changed".to_string());
+    }
+    if before.build.stdin_sha256.is_none()
+        || after.build.stdin_sha256.is_none()
+        || before.build.stdin_sha256 != after.build.stdin_sha256
+    {
+        warnings
+            .push("input bytes differ or are not recorded; metric changes are inconclusive".into());
+    }
+    if before.harness.version != after.harness.version {
+        warnings.push("measurement harness versions differ".into());
+    }
+    if before.toolchain.name != after.toolchain.name
+        || before.toolchain.version != after.toolchain.version
+    {
+        warnings.push("compiler profiles differ".into());
+    }
+    if before.build.argv != after.build.argv
+        || before.build.opt_level != after.build.opt_level
+        || before.build.argv_program != after.build.argv_program
+        || before.build.argv_runner != after.build.argv_runner
+        || before.build.env != after.build.env
+    {
+        warnings.push("build or runtime configuration differs; changes combine code and configuration effects".into());
+    }
     if before.host.fingerprint != after.host.fingerprint {
         warnings.push(
             "recorded on different machines: machine-dependent metrics are not comparable".into(),
@@ -60,8 +86,14 @@ pub fn run(format: Format, a: &std::path::Path, b: &std::path::Path) -> anyhow::
     }
 
     let comparable = before.problem.id == after.problem.id
+        && before.same_problem_definition(&after)
         && before.toolchain.same_environment(&after.toolchain)
-        && before.source.language == after.source.language;
+        && before.toolchain.name == after.toolchain.name
+        && before.toolchain.version == after.toolchain.version
+        && before.source.language == after.source.language
+        && before.harness.version == after.harness.version
+        && before.build.stdin_sha256.is_some()
+        && before.build.stdin_sha256 == after.build.stdin_sha256;
 
     // Only deterministic metrics can be called a real change; an indicative
     // metric inside its interval is noise by construction.
@@ -143,7 +175,7 @@ pub fn run(format: Format, a: &std::path::Path, b: &std::path::Path) -> anyhow::
 
     if !report.comparable {
         return Err(Fixable::new("the two capsules are not comparable")
-            .fix("compare capsules of the same problem, language, and toolchain")
+            .fix("compare capsules with the same problem definition, input bytes, language, compiler profile, toolchain environment, and harness version")
             .into_error());
     }
     Ok(())

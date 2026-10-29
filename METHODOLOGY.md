@@ -113,6 +113,15 @@ same-host repeatability gate; cross-host ranking still requires the separate
 multi-runner equality check, and the eligibility label does not make wall time
 or hardware counters comparable between machines.
 
+`ccx diff` calls metric changes conclusive only when both capsules record the
+same input bytes, problem definition, language, compiler profile and environment,
+and measurement harness version. Metric units, kinds, and collection methods
+must also match. Missing input identity or a changed comparison context makes
+the metric deltas inconclusive; machine-dependent metrics remain inconclusive
+across different host fingerprints. Different source code is expected, while a
+changed compiler or runtime configuration is shown as a warning because the
+observed delta then combines those changes.
+
 `ccx validate` checks generator determinism for every declared size and public
 and hidden seed, cross-checks brute force against the reference on the smallest
 size across those seeds, and checks every size-matched solution variant against
