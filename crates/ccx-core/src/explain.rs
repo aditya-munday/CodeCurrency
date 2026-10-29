@@ -286,6 +286,8 @@ pub struct MetricDelta {
     pub delta_pct: Option<f64>,
     /// Whether the change is larger than the measured spread, when known.
     pub significant: Significance,
+    #[serde(default)]
+    pub inconclusive_reason: Option<String>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -358,20 +360,33 @@ pub fn diff(before: &Capsule, after: &Capsule) -> CapsuleDiff {
                 })
             });
 
-        let significant =
-            if !shared_context || b.unit != a.unit || b.kind != a.kind || b.method != a.method {
-                Significance::Unknown
-            } else if before.host.fingerprint != after.host.fingerprint
-                && (b.machine_dependent() || a.machine_dependent())
-            {
-                Significance::Unknown
-            } else {
-                match spread {
-                    Some(s) if delta.abs() <= s => Significance::WithinNoise,
-                    Some(_) => Significance::Real,
-                    None => Significance::Unknown,
-                }
-            };
+        let (significant, inconclusive_reason) = if !shared_context {
+            (
+                Significance::Unknown,
+                Some("capsule problem, input, compiler, or harness identity differs".into()),
+            )
+        } else if b.unit != a.unit || b.kind != a.kind || b.method != a.method {
+            (
+                Significance::Unknown,
+                Some("metric unit, kind, or collection method differs".into()),
+            )
+        } else if before.host.fingerprint != after.host.fingerprint
+            && (b.machine_dependent() || a.machine_dependent())
+        {
+            (
+                Significance::Unknown,
+                Some("host-dependent metric recorded on different hosts".into()),
+            )
+        } else {
+            match spread {
+                Some(s) if delta.abs() <= s => (Significance::WithinNoise, None),
+                Some(_) => (Significance::Real, None),
+                None => (
+                    Significance::Unknown,
+                    Some("repeatability spread is unavailable".into()),
+                ),
+            }
+        };
 
         deltas.push(MetricDelta {
             name: b.name.clone(),
@@ -382,6 +397,7 @@ pub fn diff(before: &Capsule, after: &Capsule) -> CapsuleDiff {
             delta,
             delta_pct,
             significant,
+            inconclusive_reason,
         });
     }
 
@@ -463,6 +479,10 @@ mod tests {
             .find(|delta| delta.name == "user_cpu_time")
             .unwrap();
         assert_eq!(cpu_time.significant, Significance::Unknown);
+        assert_eq!(
+            cpu_time.inconclusive_reason.as_deref(),
+            Some("host-dependent metric recorded on different hosts")
+        );
     }
 
     #[test]
@@ -479,6 +499,10 @@ mod tests {
             .find(|delta| delta.name == "instructions")
             .unwrap();
         assert_eq!(instructions.significant, Significance::Unknown);
+        assert_eq!(
+            instructions.inconclusive_reason.as_deref(),
+            Some("capsule problem, input, compiler, or harness identity differs")
+        );
         before.harness.version = "different-harness".into();
         after.build.stdin_sha256 = before.build.stdin_sha256.clone();
         let comparison = diff(&before, &after);
@@ -488,6 +512,10 @@ mod tests {
             .find(|delta| delta.name == "instructions")
             .unwrap();
         assert_eq!(instructions.significant, Significance::Unknown);
+        assert_eq!(
+            instructions.inconclusive_reason.as_deref(),
+            Some("capsule problem, input, compiler, or harness identity differs")
+        );
     }
 
     #[test]
@@ -503,6 +531,10 @@ mod tests {
             .find(|delta| delta.name == "instructions")
             .unwrap();
         assert_eq!(instructions.significant, Significance::Unknown);
+        assert_eq!(
+            instructions.inconclusive_reason.as_deref(),
+            Some("metric unit, kind, or collection method differs")
+        );
     }
 
     #[test]

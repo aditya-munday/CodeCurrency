@@ -218,7 +218,11 @@ fn emit_report(format: Format, report: &ExperimentReport) -> anyhow::Result<()> 
                 );
                 if measurement["rankability"]["eligible"] == true {
                     println!(
-                        "  rankability  eligible | spread {:.4}% <= {:.4}% same-host tolerance",
+                        "  rankability  eligible | n={} minimum={} runs, spread {:.4}% <= {:.4}% same-host tolerance",
+                        measurement["runs"].as_u64().unwrap_or_default(),
+                        measurement["rankability"]["minimum_runs"]
+                            .as_u64()
+                            .unwrap_or_default(),
                         measurement["rankability"]["observed_spread_pct"]
                             .as_f64()
                             .unwrap_or_default(),
@@ -228,7 +232,11 @@ fn emit_report(format: Format, report: &ExperimentReport) -> anyhow::Result<()> 
                     );
                 } else {
                     println!(
-                        "  rankability  ineligible | {}",
+                        "  rankability  ineligible | n={} minimum={} | {}",
+                        measurement["runs"].as_u64().unwrap_or_default(),
+                        measurement["rankability"]["minimum_runs"]
+                            .as_u64()
+                            .unwrap_or_default(),
                         measurement["rankability"]["reason"]
                             .as_str()
                             .unwrap_or("repeatability has not been established")

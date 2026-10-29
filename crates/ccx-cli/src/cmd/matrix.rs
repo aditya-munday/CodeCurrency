@@ -611,6 +611,7 @@ mod tests {
     fn rankability(eligible: bool) -> RankingEligibility {
         RankingEligibility {
             eligible,
+            minimum_runs: 20,
             tolerance_pct: 0.01,
             observed_spread_pct: Some(if eligible { 0.0 } else { 1.0 }),
             reason: (!eligible).then(|| "observed spread exceeds tolerance".into()),

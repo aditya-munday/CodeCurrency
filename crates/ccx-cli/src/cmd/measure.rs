@@ -514,13 +514,17 @@ pub fn emit_report(format: Format, problem: &str, report: &MeasureReport) -> any
             println!("  ranked on {}", report.ranked_metric);
             if report.rankability.eligible {
                 println!(
-                    "  rankability eligible | spread {:.4}% <= {:.4}% same-host tolerance",
+                    "  rankability eligible | n={} minimum={} runs, spread {:.4}% <= {:.4}% same-host tolerance",
+                    report.runs,
+                    report.rankability.minimum_runs,
                     report.rankability.observed_spread_pct.unwrap_or_default(),
                     report.rankability.tolerance_pct
                 );
             } else {
                 println!(
-                    "  rankability ineligible | {}",
+                    "  rankability ineligible | n={} minimum={} | {}",
+                    report.runs,
+                    report.rankability.minimum_runs,
                     report
                         .rankability
                         .reason

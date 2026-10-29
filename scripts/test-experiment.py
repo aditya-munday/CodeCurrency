@@ -44,8 +44,9 @@ with tempfile.TemporaryDirectory(prefix="ccx-experiment-test-") as temporary:
     assert report["measurement"]["capsule_id"]
     assert report["measurement"]["hints"] is not None
     rankability = report["measurement"]["rankability"]
-    assert rankability["eligible"] is True
-    assert rankability["observed_spread_pct"] <= rankability["tolerance_pct"]
+    assert rankability["eligible"] is False
+    assert report["measurement"]["runs"] < rankability["minimum_runs"]
+    assert "samples are required" in rankability["reason"]
     assert any(metric["name"] == "instructions" for metric in report["measurement"]["metrics"])
     assert any(metric["name"] == "build_wall_clock" for metric in report["measurement"]["metrics"])
     assert report["assembly"]["assembly_files"]
@@ -108,6 +109,11 @@ with tempfile.TemporaryDirectory(prefix="ccx-experiment-test-") as temporary:
     assert not different_input_diff_report["real_changes"]
     assert not different_input_diff_report["noise_only"]
     assert different_input_diff_report["inconclusive"]
+    assert all(
+        delta["inconclusive_reason"]
+        for delta in different_input_diff_report["diff"]["deltas"]
+        if delta["significant"] == "unknown"
+    )
 
     replay = subprocess.run(
         [str(ccx), "replay", str(capsule), "--dir", str(repo / "arena/good"), "--format", "json"],

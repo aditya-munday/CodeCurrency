@@ -3,10 +3,11 @@
 ## Unreleased
 
 - Report when a ranked metric's same-host repeatability exceeds the 0.01%
-  tolerance, and withhold compiler-matrix comparisons for ineligible metrics.
+  tolerance or has fewer than twenty samples, and withhold compiler-matrix
+  comparisons for ineligible metrics.
 - Require matching problem files, input bytes, compiler environment, and
   harness before `ccx diff` labels metric changes conclusive; identify unit or
-  metric-method changes as inconclusive.
+  metric-method changes as inconclusive, with a reason shown for each metric.
 - Refresh ten single- and multi-file C, C++, Rust, D, Zig, Odin, and Go
   twenty-run capsules for harness 0.18.0; replay each capsule and record the
   local repeatability evidence and current Go metric spreads.

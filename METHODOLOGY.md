@@ -107,20 +107,20 @@ The combined report labels pairwise ranked-metric differences within twice the
 combined 95% confidence half-width as `within_noise`; it is a same-host
 comparison aid, not a cross-host significance test or ranking.
 The measurement report marks a ranked metric eligible only when it is
-machine-independent and its observed spread is at most 0.01%. Matrix pairwise
-comparisons are withheld when either profile fails that check. This is a
-same-host repeatability gate; cross-host ranking still requires the separate
-multi-runner equality check, and the eligibility label does not make wall time
-or hardware counters comparable between machines.
+machine-independent, has at least twenty samples, and its observed spread is at
+most 0.01%. Matrix pairwise comparisons are withheld when either profile fails
+that check. This same-host repeatability gate does not replace the separate
+multi-runner equality check, and eligibility does not make wall time or
+hardware counters comparable between machines.
 
 `ccx diff` calls metric changes conclusive only when both capsules record the
 same input bytes, problem definition, language, compiler profile and environment,
 and measurement harness version. Metric units, kinds, and collection methods
 must also match. Missing input identity or a changed comparison context makes
-the metric deltas inconclusive; machine-dependent metrics remain inconclusive
-across different host fingerprints. Different source code is expected, while a
-changed compiler or runtime configuration is shown as a warning because the
-observed delta then combines those changes.
+the metric deltas inconclusive with a reason in the report; machine-dependent
+metrics remain inconclusive across different host fingerprints. Different
+source code is expected, while a changed compiler or runtime configuration is
+shown as a warning because the observed delta then combines those changes.
 
 `ccx validate` checks generator determinism for every declared size and public
 and hidden seed, cross-checks brute force against the reference on the smallest

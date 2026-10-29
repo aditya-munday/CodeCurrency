@@ -71,6 +71,9 @@ pub fn run(format: Format, a: &std::path::Path, b: &std::path::Path) -> anyhow::
     {
         warnings.push("compiler profiles differ".into());
     }
+    if !before.toolchain.same_environment(&after.toolchain) {
+        warnings.push("toolchain environments differ".into());
+    }
     if before.build.argv != after.build.argv
         || before.build.opt_level != after.build.opt_level
         || before.build.argv_program != after.build.argv_program
@@ -158,6 +161,9 @@ pub fn run(format: Format, a: &std::path::Path, b: &std::path::Path) -> anyhow::
                     format!("{:.0}", d.after),
                     pct,
                 );
+                if let Some(reason) = &d.inconclusive_reason {
+                    println!("    inconclusive: {reason}");
+                }
             }
             if !report.real_changes.is_empty() {
                 println!();

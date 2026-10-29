@@ -9,10 +9,12 @@ use serde::Serialize;
 use std::collections::BTreeMap;
 
 pub const DEFAULT_RANKING_SPREAD_TOLERANCE_PCT: f64 = 0.01;
+pub const DEFAULT_RANKING_MINIMUM_RUNS: u32 = 20;
 
 #[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct RankingEligibility {
     pub eligible: bool,
+    pub minimum_runs: u32,
     pub tolerance_pct: f64,
     pub observed_spread_pct: Option<f64>,
     pub reason: Option<String>,
@@ -26,9 +28,9 @@ pub fn ranking_eligibility(metric: Option<&Metric>, spread: Option<&Spread>) -> 
             Some("ranked metric depends on the host".to_string())
         }
         (_, None) => Some("repeatability spread is unavailable".to_string()),
-        (_, Some(spread)) if spread.samples < 2 => {
-            Some("at least two samples are required".to_string())
-        }
+        (_, Some(spread)) if spread.samples < DEFAULT_RANKING_MINIMUM_RUNS => Some(format!(
+            "at least {DEFAULT_RANKING_MINIMUM_RUNS} samples are required"
+        )),
         (_, Some(spread)) if spread.spread_pct > DEFAULT_RANKING_SPREAD_TOLERANCE_PCT => {
             Some(format!(
                 "observed spread {:.4}% exceeds the {:.4}% tolerance",
@@ -39,6 +41,7 @@ pub fn ranking_eligibility(metric: Option<&Metric>, spread: Option<&Spread>) -> 
     };
     RankingEligibility {
         eligible: reason.is_none(),
+        minimum_runs: DEFAULT_RANKING_MINIMUM_RUNS,
         tolerance_pct: DEFAULT_RANKING_SPREAD_TOLERANCE_PCT,
         observed_spread_pct,
         reason,
@@ -225,10 +228,16 @@ mod tests {
     }
 
     #[test]
-    fn ranking_eligibility_rejects_missing_or_single_sample_spreads() {
+    fn ranking_eligibility_rejects_missing_or_insufficient_spreads() {
         let metric = stable_metric();
         assert!(!ranking_eligibility(Some(&metric), None).eligible);
-        assert!(!ranking_eligibility(Some(&metric), Some(&stable_spread(0.0, 1))).eligible);
+        let insufficient = ranking_eligibility(Some(&metric), Some(&stable_spread(0.0, 19)));
+        assert!(!insufficient.eligible);
+        assert_eq!(
+            insufficient.reason.as_deref(),
+            Some("at least 20 samples are required")
+        );
+        assert!(ranking_eligibility(Some(&metric), Some(&stable_spread(0.0, 20))).eligible);
     }
 
     #[test]
