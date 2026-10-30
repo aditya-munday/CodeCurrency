@@ -1029,6 +1029,87 @@ mod tests {
     }
 
     #[test]
+    fn published_pair_counting_capsules_preserve_the_documented_comparison() {
+        let naive = Capsule::from_json(include_str!(
+            "../../../evidence/sorted-pair-sum-naive-v0.19.json"
+        ))
+        .unwrap();
+        let good = Capsule::from_json(include_str!(
+            "../../../evidence/sorted-pair-sum-good-v0.19.json"
+        ))
+        .unwrap();
+
+        assert!(naive.same_comparison_context(&good));
+        assert_eq!(naive.schema_version, CURRENT_SCHEMA_VERSION);
+        assert_eq!(good.schema_version, CURRENT_SCHEMA_VERSION);
+        assert_eq!(naive.harness.version, HARNESS_VERSION);
+        assert_eq!(good.harness.version, HARNESS_VERSION);
+        assert_eq!(naive.source.language, Language::Cpp);
+        assert_eq!(good.source.language, Language::Cpp);
+        assert_eq!(naive.input.seed, 1);
+        assert_eq!(good.input.seed, 1);
+        assert_eq!(naive.input.size, Some(800));
+        assert_eq!(good.input.size, Some(800));
+        assert_eq!(naive.repeatability.as_ref().unwrap().runs, 20);
+        assert_eq!(good.repeatability.as_ref().unwrap().runs, 20);
+        assert_eq!(naive.build_repeatability.as_ref().unwrap().runs, 3);
+        assert_eq!(good.build_repeatability.as_ref().unwrap().runs, 3);
+
+        let expected = [
+            (
+                "instructions",
+                5_317_517.0,
+                2_506_969.0,
+                MetricKind::Simulated,
+            ),
+            (
+                "memory_refs",
+                6_520_988.0,
+                3_409_423.0,
+                MetricKind::Simulated,
+            ),
+            ("branches", 714_278.0, 407_255.0, MetricKind::Simulated),
+            ("branch_misses", 15_727.0, 18_868.0, MetricKind::Simulated),
+            ("cache_misses", 17_683.0, 17_708.0, MetricKind::Simulated),
+            ("allocations", 4.0, 4.0, MetricKind::Measured),
+            ("allocated_bytes", 88_320.0, 88_320.0, MetricKind::Measured),
+            ("binary_size", 16_560.0, 16_904.0, MetricKind::Measured),
+        ];
+
+        for (name, naive_value, good_value, kind) in expected {
+            let naive_metric = naive
+                .metrics
+                .iter()
+                .find(|metric| metric.name == name)
+                .unwrap();
+            let good_metric = good
+                .metrics
+                .iter()
+                .find(|metric| metric.name == name)
+                .unwrap();
+            assert_eq!(naive_metric.value, naive_value);
+            assert_eq!(good_metric.value, good_value);
+            assert_eq!(naive_metric.kind, kind);
+            assert_eq!(good_metric.kind, kind);
+
+            for capsule in [&naive, &good] {
+                let values = capsule.repeatability.as_ref().unwrap().per_metric[name]
+                    .values
+                    .as_ref()
+                    .unwrap();
+                assert_eq!(values.len(), 20);
+                assert!(values.iter().all(|value| *value
+                    == capsule
+                        .metrics
+                        .iter()
+                        .find(|metric| metric.name == name)
+                        .unwrap()
+                        .value));
+            }
+        }
+    }
+
+    #[test]
     fn schema_fifteen_go_capsule_preserves_unrankable_raw_samples() {
         let json = include_str!("../tests/fixtures/go-capsule-v15.json");
         let capsule = Capsule::from_json(json).unwrap();
