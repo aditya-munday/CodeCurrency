@@ -35,8 +35,9 @@ known gaps in the expanded Phase 1 target:
   define an executable target named `ccx_solution`; other target names and
   custom multi-configuration generators are not supported.
 - Build artifacts larger than 64 MiB are rejected before transfer from the
-  sandbox. The runner accepts only regular files and does not follow a final
-  symlink or block opening a FIFO at the artifact path.
+  sandbox. Artifact collection uses `O_NOFOLLOW | O_NONBLOCK`, checks that the
+  opened path is a regular file, and emits no artifact for a final symlink or
+  FIFO. The runner integration test covers both cases.
 - The checked-in problem set now covers five categories: sorting, data
   structures, parsing, queues, and memory. Its content breadth remains limited
   until additional validated problems are added.

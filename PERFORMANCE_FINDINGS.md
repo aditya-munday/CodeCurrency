@@ -1,5 +1,81 @@
 # Performance finding: pair counting
 
+## Current schema-15 result
+
+This is the current replayable comparison. It supersedes the older schema-14
+numbers preserved below. The [naive capsule](evidence/sorted-pair-sum-naive-v0.19.json)
+and [sort-and-two-pointers capsule](evidence/sorted-pair-sum-good-v0.19.json)
+were measured with harness `0.19.0`, GCC `14.2.0`, `-O2`, and the pinned
+`ccx-gcc` image (`sha256:3778d4d751b6d2fc95c0df2dd9968903d5889ee4db60a3ad2b7a95db06bf2120`).
+Both use the same problem, public seed `1`, size `naive` (800 values), generated
+stdin SHA-256, host fingerprint, and measurement ruleset. Each capsule contains
+twenty ordered same-binary execution samples and three clean-build samples.
+The raw simulated instruction, memory-reference, branch, and cache-miss samples
+are identical across all twenty repetitions in each capsule.
+
+| Metric | Naive | Sort and two pointers | Change | Label and method |
+| --- | ---: | ---: | ---: | --- |
+| Instructions | 5,317,517 | 2,506,969 | −52.85% | simulated, Cachegrind |
+| Memory references | 6,520,988 | 3,409,423 | −47.72% | simulated, Cachegrind |
+| Branches | 714,278 | 407,255 | −42.98% | simulated, Cachegrind |
+| Branch misses | 15,727 | 18,868 | +19.97% | simulated, Cachegrind |
+| Branch-miss rate | 2.20% | 4.63% | +2.43 percentage points | simulated, Cachegrind |
+| Cache misses | 17,683 | 17,708 | +0.14% | simulated, fixed Cachegrind model |
+| Cache-miss rate | 0.271% | 0.519% | +0.248 percentage points | simulated, fixed Cachegrind model |
+| Allocations | 4 | 4 | 0% | measured, Valgrind Memcheck |
+| Allocated bytes | 88,320 | 88,320 | 0% | measured, Valgrind Memcheck |
+| Binary size | 16,560 B | 16,904 B | +2.08% | measured, filesystem stat |
+| Execution wall time | 2.880 ms ± 0.658 ms | 1.854 ms ± 0.293 ms | within noise | indicative, capsule CI95 |
+
+The algorithm change cuts the deterministic instruction count by about half by
+sorting once and then advancing two pointers, instead of visiting every pair.
+The lower total branch count comes with more branch misses. Cache-miss counts
+are nearly equal, while the miss rate rises because the optimized run makes
+fewer total memory references. These are simulated Cachegrind counts, not CPU
+hardware-counter readings. The allocation counts and bytes are unchanged, and
+the optimized executable is 344 bytes larger. The wall-time intervals overlap;
+`ccx diff` classifies the timing and paired-ratio differences as within noise,
+so this run does not establish a wall-clock winner.
+
+`ccx asm --dir arena/naive --format json` and
+`ccx asm --dir arena/good --format json` emit source-mapped assembly and GCC
+optimization remarks. The naive nested pair loop maps to
+[`arena/naive/main.cpp:21`](arena/naive/main.cpp#L21) through line 27. The
+optimized source maps sorting to [`arena/good/main.cpp:17`](arena/good/main.cpp#L17)
+and its pointer walk to [`arena/good/main.cpp:20`](arena/good/main.cpp#L20)
+through line 26. GCC reports that it did not vectorize the pointer loop because
+its iteration count cannot be computed. The scalar loop still executes far
+fewer operations because of the algorithmic change. Cachegrind does not assign
+misses to individual source lines, so the counter difference alone cannot
+identify a source-level cache hotspot.
+
+Replay and compare the checked-in capsules with:
+
+```sh
+target/release/ccx replay evidence/sorted-pair-sum-naive-v0.19.json --dir arena/naive
+target/release/ccx replay evidence/sorted-pair-sum-good-v0.19.json --dir arena/good
+target/release/ccx diff evidence/sorted-pair-sum-naive-v0.19.json evidence/sorted-pair-sum-good-v0.19.json
+```
+
+Both replay reports must show `reproduced: true` and
+`deterministic_match: true`. Both do. The naive replay also matched its
+machine-dependent intervals. The good replay did not: wall time, reference
+wall time, and build user CPU time fell outside their recorded intervals, so
+its `machine_dependent_match` is false. Its deterministic counters and measured
+allocation and binary-size metrics still matched exactly. This is an observed
+limit of replaying timing data on a noisy WSL2 host, not a deterministic-counter
+mismatch. The capsule IDs are
+`59f9ff2415a22859147fc0939c355c8d6b1a06d6e8af0fe8f99997ee6d3c867a` and
+`7023057ed0bde7f7b2b8fc29f48cb8e80f223186efeb3675111a02e72da7ea86`.
+
+## Archived schema-14 and harness-0.18 record
+
+The following report records earlier runs. Its values and capsule IDs are kept
+as historical evidence; use the schema-15 capsules above for the current
+pair-counting comparison.
+
+### Earlier pair-counting run
+
 This run compares the checked-in naive pair scan with the sort-and-two-pointer
 solution on one identical generated input. Both capsules use GCC 14.2.0 at
 `-O2`, the pinned `ccx-gcc` image, size `naive` (800 values), seed `1`, and the
@@ -19,7 +95,7 @@ each command prints the path to its complete assembly artifact alongside the
 terminal preview. The repeated pair loop maps to `main.cpp:21–27`, while the replacement path maps
 to the sort at `main.cpp:17` and the pointer loop at `main.cpp:20–26`.
 
-## Results
+#### Results
 
 | Metric | Naive | Sort and two pointers | Change | Label |
 | --- | ---: | ---: | ---: | --- |
@@ -76,7 +152,7 @@ counts were zero in both samples.
 These process counters do not identify file-level I/O latency or network
 activity.
 
-## Replay and diff
+#### Replay and diff
 
 The schema-14, harness-0.18.0 capsules are available as [naive](arena/naive/capsule.phase1.v0.18.json)
 and [optimized](arena/good/capsule.phase1.v0.18.json). Their IDs are
@@ -106,7 +182,7 @@ full host fingerprint and measurement metadata. The older `capsule.phase1.json`
 files remain as harness-0.16.0 historical samples. Current replay requires the
 recorded harness version, so use the 0.18.0 pair above for replay.
 
-## Generated-test throughput sample
+#### Generated-test throughput sample
 
 `ccx test --dir arena/good --cases 1000 --seed 40000 --size naive --jobs 4`
 completed 1,000 generated cases plus the nine fixed public cases in 17.09
@@ -127,7 +203,7 @@ target/release/ccx replay arena/good/reproduced.json
 target/release/ccx diff arena/naive/reproduced.json arena/good/reproduced.json
 ```
 
-## A third approach: counting by value
+#### A third approach: counting by value
 
 The [great source](arena/great/main.cpp) uses the problem's value bound
 `0 <= a[i] <= 2n` to count frequencies and build a prefix sum instead of
