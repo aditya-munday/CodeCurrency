@@ -162,8 +162,16 @@ pub fn explain(capsule: &Capsule, rules: &Ruleset) -> Vec<Hint> {
                             branch_count
                         ),
                         evidence: vec![
-                            Evidence { metric: "branch_misses".into(), value: misses, unit: "count".into() },
-                            Evidence { metric: "branches".into(), value: branch_count, unit: "count".into() },
+                            Evidence {
+                                metric: "branch_misses".into(),
+                                value: misses,
+                                unit: "count".into(),
+                            },
+                            Evidence {
+                                metric: "branches".into(),
+                                value: branch_count,
+                                unit: "count".into(),
+                            },
                         ],
                         confidence: Confidence::Likely,
                     });
@@ -189,8 +197,16 @@ pub fn explain(capsule: &Capsule, rules: &Ruleset) -> Vec<Hint> {
                         rate * 100.0
                     ),
                     evidence: vec![
-                        Evidence { metric: "cache_misses".into(), value: misses, unit: "count".into() },
-                        Evidence { metric: "memory_refs".into(), value: refs, unit: "count".into() },
+                        Evidence {
+                            metric: "cache_misses".into(),
+                            value: misses,
+                            unit: "count".into(),
+                        },
+                        Evidence {
+                            metric: "memory_refs".into(),
+                            value: refs,
+                            unit: "count".into(),
+                        },
                     ],
                     confidence: Confidence::Likely,
                 });
@@ -207,7 +223,11 @@ pub fn explain(capsule: &Capsule, rules: &Ruleset) -> Vec<Hint> {
                      solution is probably materialising something it could stream.",
                     peak as u64 / (1024 * 1024)
                 ),
-                evidence: vec![Evidence { metric: "peak_memory".into(), value: peak, unit: "bytes".into() }],
+                evidence: vec![Evidence {
+                    metric: "peak_memory".into(),
+                    value: peak,
+                    unit: "bytes".into(),
+                }],
                 confidence: Confidence::Certain,
             });
         }
@@ -266,6 +286,8 @@ pub struct MetricDelta {
     pub delta_pct: Option<f64>,
     /// Whether the change is larger than the measured spread, when known.
     pub significant: Significance,
+    #[serde(default)]
+    pub inconclusive_reason: Option<String>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -296,6 +318,7 @@ pub struct CapsuleDiff {
 /// noise, and so does the diff.
 pub fn diff(before: &Capsule, after: &Capsule) -> CapsuleDiff {
     let mut deltas = Vec::new();
+    let shared_context = before.same_comparison_context(after);
 
     for b in &before.metrics {
         let Some(a) = after.metrics.iter().find(|m| m.name == b.name) else {
@@ -330,10 +353,32 @@ pub fn diff(before: &Capsule, after: &Capsule) -> CapsuleDiff {
                 })
             });
 
-        let significant = match spread {
-            Some(s) if delta.abs() <= s => Significance::WithinNoise,
-            Some(_) => Significance::Real,
-            None => Significance::Unknown,
+        let (significant, inconclusive_reason) = if !shared_context {
+            (
+                Significance::Unknown,
+                Some("capsule problem, input, compiler, or harness identity differs".into()),
+            )
+        } else if b.unit != a.unit || b.kind != a.kind || b.method != a.method {
+            (
+                Significance::Unknown,
+                Some("metric unit, kind, or collection method differs".into()),
+            )
+        } else if before.host.fingerprint != after.host.fingerprint
+            && (b.machine_dependent() || a.machine_dependent())
+        {
+            (
+                Significance::Unknown,
+                Some("host-dependent metric recorded on different hosts".into()),
+            )
+        } else {
+            match spread {
+                Some(s) if delta.abs() <= s => (Significance::WithinNoise, None),
+                Some(_) => (Significance::Real, None),
+                None => (
+                    Significance::Unknown,
+                    Some("repeatability spread is unavailable".into()),
+                ),
+            }
         };
 
         deltas.push(MetricDelta {
@@ -345,6 +390,7 @@ pub fn diff(before: &Capsule, after: &Capsule) -> CapsuleDiff {
             delta,
             delta_pct,
             significant,
+            inconclusive_reason,
         });
     }
 
@@ -352,9 +398,15 @@ pub fn diff(before: &Capsule, after: &Capsule) -> CapsuleDiff {
         from_id: before.capsule_id.clone(),
         to_id: after.capsule_id.clone(),
         deltas,
-        verdict_changed: (before.verdict != after.verdict)
-            .then(|| (format!("{:?}", before.verdict), format!("{:?}", after.verdict))),
-        toolchain_changed: before.toolchain.image_digest != after.toolchain.image_digest,
+        verdict_changed: (before.verdict != after.verdict).then(|| {
+            (
+                format!("{:?}", before.verdict),
+                format!("{:?}", after.verdict),
+            )
+        }),
+        toolchain_changed: before.toolchain.name != after.toolchain.name
+            || before.toolchain.version != after.toolchain.version
+            || !before.toolchain.same_environment(&after.toolchain),
         host_changed: before.host.fingerprint != after.host.fingerprint,
     }
 }
@@ -362,6 +414,7 @@ pub fn diff(before: &Capsule, after: &Capsule) -> CapsuleDiff {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::capsule::{Capsule, Metric, MetricKind, MetricMethod};
 
     #[test]
     fn ruleset_id_is_stable_and_changes_with_thresholds() {
@@ -380,5 +433,164 @@ mod tests {
         let spread: f64 = 5.0;
         let delta: f64 = 1.0;
         assert!(delta.abs() <= spread);
+    }
+
+    #[test]
+    fn equivalent_rebuilt_toolchain_images_are_the_same_environment() {
+        let source = include_str!("../tests/fixtures/capsule-v2.json");
+        let mut before = Capsule::from_json(source).unwrap();
+        let mut after = before.clone();
+        before.toolchain.environment_fingerprint = Some("sha256:environment".into());
+        after.toolchain.environment_fingerprint = Some("sha256:environment".into());
+        after.toolchain.image_digest = "sha256:rebuilt-image".into();
+        assert!(!diff(&before, &after).toolchain_changed);
+    }
+
+    #[test]
+    fn getrusage_changes_across_hosts_are_inconclusive() {
+        let source = include_str!("../tests/fixtures/capsule-v2.json");
+        let mut before = Capsule::from_json(source).unwrap();
+        let mut after = before.clone();
+        before.host.fingerprint = "host-a".into();
+        after.host.fingerprint = "host-b".into();
+        before.metrics.push(Metric::count(
+            "user_cpu_time",
+            100,
+            MetricKind::Measured,
+            MetricMethod::Getrusage,
+        ));
+        after.metrics.push(Metric::count(
+            "user_cpu_time",
+            200,
+            MetricKind::Measured,
+            MetricMethod::Getrusage,
+        ));
+        let comparison = diff(&before, &after);
+        let cpu_time = comparison
+            .deltas
+            .iter()
+            .find(|delta| delta.name == "user_cpu_time")
+            .unwrap();
+        assert_eq!(cpu_time.significant, Significance::Unknown);
+        assert_eq!(
+            cpu_time.inconclusive_reason.as_deref(),
+            Some("host-dependent metric recorded on different hosts")
+        );
+    }
+
+    #[test]
+    fn deterministic_changes_across_different_inputs_are_inconclusive() {
+        let source = include_str!("../tests/fixtures/capsule-v11.json");
+        let mut before = Capsule::from_json(source).unwrap();
+        let mut after = before.clone();
+        after.build.stdin_sha256 = Some("different-input".into());
+        after.metrics[0].value += 1000.0;
+        let comparison = diff(&before, &after);
+        let instructions = comparison
+            .deltas
+            .iter()
+            .find(|delta| delta.name == "instructions")
+            .unwrap();
+        assert_eq!(instructions.significant, Significance::Unknown);
+        assert_eq!(
+            instructions.inconclusive_reason.as_deref(),
+            Some("capsule problem, input, compiler, or harness identity differs")
+        );
+        before.harness.version = "different-harness".into();
+        after.build.stdin_sha256 = before.build.stdin_sha256.clone();
+        let comparison = diff(&before, &after);
+        let instructions = comparison
+            .deltas
+            .iter()
+            .find(|delta| delta.name == "instructions")
+            .unwrap();
+        assert_eq!(instructions.significant, Significance::Unknown);
+        assert_eq!(
+            instructions.inconclusive_reason.as_deref(),
+            Some("capsule problem, input, compiler, or harness identity differs")
+        );
+    }
+
+    #[test]
+    fn changed_optimization_profile_makes_metric_deltas_inconclusive() {
+        let before =
+            Capsule::from_json(include_str!("../tests/fixtures/capsule-v11.json")).unwrap();
+        let mut after = before.clone();
+        after.build.opt_level = "-O3".into();
+        after.metrics[0].value += 100.0;
+        let comparison = diff(&before, &after);
+        let instructions = comparison
+            .deltas
+            .iter()
+            .find(|delta| delta.name == "instructions")
+            .unwrap();
+        assert_eq!(instructions.significant, Significance::Unknown);
+        assert!(instructions
+            .inconclusive_reason
+            .as_deref()
+            .unwrap()
+            .contains("identity differs"));
+    }
+
+    #[test]
+    fn metric_label_changes_are_inconclusive() {
+        let source = include_str!("../tests/fixtures/capsule-v11.json");
+        let before = Capsule::from_json(source).unwrap();
+        let mut after = before.clone();
+        after.metrics[0].unit = "events".into();
+        let comparison = diff(&before, &after);
+        let instructions = comparison
+            .deltas
+            .iter()
+            .find(|delta| delta.name == "instructions")
+            .unwrap();
+        assert_eq!(instructions.significant, Significance::Unknown);
+        assert_eq!(
+            instructions.inconclusive_reason.as_deref(),
+            Some("metric unit, kind, or collection method differs")
+        );
+    }
+
+    #[test]
+    fn problem_bundle_changes_are_inconclusive() {
+        let source = include_str!("../tests/fixtures/capsule-v11.json");
+        let before = Capsule::from_json(source).unwrap();
+        let mut after = before.clone();
+        after
+            .source
+            .files
+            .insert("problem/generator.c".into(), "sha256:different".into());
+        let comparison = diff(&before, &after);
+        let instructions = comparison
+            .deltas
+            .iter()
+            .find(|delta| delta.name == "instructions")
+            .unwrap();
+        assert_eq!(instructions.significant, Significance::Unknown);
+        assert!(!before.same_problem_definition(&after));
+    }
+
+    #[test]
+    fn runtime_arguments_and_execution_targets_must_match() {
+        let source = include_str!("../tests/fixtures/capsule-v11.json");
+        let before = Capsule::from_json(source).unwrap();
+        let mut after = before.clone();
+        after.build.argv_program.push("--different-mode".into());
+        let comparison = diff(&before, &after);
+        let instructions = comparison
+            .deltas
+            .iter()
+            .find(|delta| delta.name == "instructions")
+            .unwrap();
+        assert_eq!(instructions.significant, Significance::Unknown);
+        after = before.clone();
+        after.host.arch = "aarch64".into();
+        let comparison = diff(&before, &after);
+        let instructions = comparison
+            .deltas
+            .iter()
+            .find(|delta| delta.name == "instructions")
+            .unwrap();
+        assert_eq!(instructions.significant, Significance::Unknown);
     }
 }

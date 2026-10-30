@@ -5,8 +5,11 @@ pub mod asm;
 pub mod build;
 pub mod diff;
 pub mod doctor;
+pub mod experiment;
 pub mod init;
+pub mod matrix;
 pub mod measure;
+pub mod profiles;
 pub mod replay;
 pub mod run;
 pub mod test;
@@ -15,7 +18,11 @@ pub mod validate;
 use crate::Format;
 
 /// Print a payload either as a table (already rendered) or as JSON.
-pub fn emit<T: serde::Serialize>(format: Format, table: impl FnOnce(), value: &T) -> anyhow::Result<()> {
+pub fn emit<T: serde::Serialize>(
+    format: Format,
+    table: impl FnOnce(),
+    value: &T,
+) -> anyhow::Result<()> {
     match format {
         Format::Table => {
             table();
@@ -62,4 +69,3 @@ impl Fixable {
         anyhow::anyhow!(msg)
     }
 }
-

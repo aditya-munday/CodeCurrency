@@ -8,6 +8,7 @@ use crate::context::{policy_for, Solution};
 use crate::pipeline::Pipeline;
 use crate::Format;
 use ccx_core::capsule::Verdict;
+use ccx_core::problem::Judge;
 use serde::Serialize;
 
 #[derive(Debug, Clone, Serialize)]
@@ -43,7 +44,18 @@ pub fn run(
 
     let matches = if verdict == Verdict::Accepted {
         let expected = pipeline.reference_output(&input)?;
-        Some(outcome.stdout.as_bytes() == expected.as_slice())
+        if sol.problem.meta.judge == Judge::Checker {
+            let checker = pipeline.build_checker()?;
+            Some(pipeline.check_output(
+                &checker,
+                &input,
+                &expected,
+                outcome.stdout.as_bytes(),
+                &policy,
+            )?)
+        } else {
+            Some(outcome.stdout.as_bytes() == expected.as_slice())
+        }
     } else {
         None
     };
@@ -105,9 +117,11 @@ pub fn run(
     }
 
     if verdict != Verdict::Accepted {
-        return Err(Fixable::new(format!("the run did not complete cleanly: {verdict:?}"))
-            .fix("see the stderr above")
-            .into_error());
+        return Err(
+            Fixable::new(format!("the run did not complete cleanly: {verdict:?}"))
+                .fix("see the stderr above")
+                .into_error(),
+        );
     }
     Ok(())
 }

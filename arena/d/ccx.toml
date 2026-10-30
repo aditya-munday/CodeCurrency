@@ -1,0 +1,5 @@
+# CodeCurrency solution.
+problem = "../../problems/sorted-pair-sum"
+language = "d"
+toolchain = "gdc"
+opt_level = "-O2"

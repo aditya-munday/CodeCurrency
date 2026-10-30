@@ -1,0 +1,13 @@
+{
+  "id": "queues/fifo-stream",
+  "title": "Process a FIFO Event Stream",
+  "category": "queues",
+  "difficulty": "cache_aware",
+  "ranked_metric": "instructions",
+  "summary": "Apply enqueue and dequeue operations in order. Compare removing from a vector front, using std::deque, and using a preallocated ring buffer.",
+  "limits": { "time_ms": 10000, "memory_bytes": 536870912, "output_bytes": 1048576 },
+  "seeds": { "public": [401, 409, 419], "hidden": [900002003, 900002009] },
+  "reference_language": "cpp",
+  "judge": "exact",
+  "sizes": { "naive": 10000, "good": 50000, "great": 200000 }
+}

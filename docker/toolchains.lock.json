@@ -1,26 +1,161 @@
 {
   "base_image": "debian:13-slim",
   "base_digest": "sha256:62bd423aeee912639ca8ee681c2b762cb3e25137e0a92b20be455898a9f034ad",
+  "apt_snapshot": "20261020T213255Z",
   "generated_by": "scripts/pin-toolchains.sh",
-  "harness_sha256": "968c012d24b1a290b28a0910138b473c6c29d4c4dded06a7d4c54f9ecff17cf0",
+  "harness_sha256": "b6ddd1bf31ab27c7f0a11695dc3c0ae1c604f6891fe709b5d9185bd1b11fbfda",
+  "harness_sha256_by_image": {
+    "ccx-gcc": "b6ddd1bf31ab27c7f0a11695dc3c0ae1c604f6891fe709b5d9185bd1b11fbfda",
+    "ccx-clang": "a8a168b162a13bc89f44b398395c10b89a36a02bd7548c6dd9f39b0c02355d6a",
+    "ccx-rust": "b6ddd1bf31ab27c7f0a11695dc3c0ae1c604f6891fe709b5d9185bd1b11fbfda"
+  },
+  "environment_fingerprints": {
+    "ccx-gcc": "sha256:3062e26d94e1cb23996a008b530a806af09c56426398daae4ff534ae2e85b9d7",
+    "ccx-clang": "sha256:7829e9eb0cd2eb94e61f3d1a367ecaadac30bb4b68fa803c179ce3fdafb8f274",
+    "ccx-rust": "sha256:b42f0d0d3ad4e59ea95e6e11a56cad4c3cc8dd95f2cbef0c6c95b2d5002b51c3"
+  },
+  "build_tools": {
+    "cmake": {
+      "version": "3.31.6",
+      "binary_sha256": "9a2692f4d712265eb29c90c3366bfc40df400ea586b0477edabbcf3bae745dc1"
+    },
+    "ninja": {
+      "version": "1.12.1",
+      "binary_sha256": "e8e646527e23aa7a66d0f04b86b89f1bb2f25edcc1c5e402a0989e5364c8779b"
+    },
+    "make": {
+      "version": "4.4.1",
+      "binary_sha256": "8a229baf64671988cfb5af43ba3070c6ce7214cf32bcf96155115559d1466fa7"
+    }
+  },
   "toolchains": [
     {
       "name": "gcc",
       "version": "14.2.0",
       "image": "ccx-gcc",
-      "image_digest": "sha256:f6d91c0fb2954ed0ad51d547f8b7b74351a866f5ace727771a2b991028333c18",
+      "image_digest": "sha256:3778d4d751b6d2fc95c0df2dd9968903d5889ee4db60a3ad2b7a95db06bf2120",
+      "image_id": "sha256:3778d4d751b6d2fc95c0df2dd9968903d5889ee4db60a3ad2b7a95db06bf2120",
+      "environment_fingerprint": "sha256:3062e26d94e1cb23996a008b530a806af09c56426398daae4ff534ae2e85b9d7",
       "libc": "glibc 2.41",
       "compiler": "gcc",
+      "compiler_binaries": [
+        "/usr/bin/gcc",
+        "/usr/bin/g++"
+      ],
       "compiler_sha256": "504654c1bd734fbd5b35571f51a77279e1350942e285b19be277344d2186f679"
+    },
+    {
+      "name": "gcc-13",
+      "version": "13.3.0",
+      "image": "ccx-gcc",
+      "image_digest": "sha256:3778d4d751b6d2fc95c0df2dd9968903d5889ee4db60a3ad2b7a95db06bf2120",
+      "image_id": "sha256:3778d4d751b6d2fc95c0df2dd9968903d5889ee4db60a3ad2b7a95db06bf2120",
+      "environment_fingerprint": "sha256:3062e26d94e1cb23996a008b530a806af09c56426398daae4ff534ae2e85b9d7",
+      "libc": "glibc 2.41",
+      "compiler": "gcc-13",
+      "compiler_binaries": [
+        "/usr/bin/gcc-13",
+        "/usr/bin/g++-13"
+      ],
+      "compiler_sha256": "c538b3fe44f44146e21057a1a18f774b1a8ff09f37228f1bbc4fc3d7c6c0e3d9"
     },
     {
       "name": "clang",
       "version": "19.1.7",
       "image": "ccx-clang",
-      "image_digest": "sha256:b501771219f36a86f8c6ee24535d52e496c401bb2bdf20b77762c758f38b1d4b",
+      "image_digest": "sha256:7d3f77de03a01017d27fb9f2189d204c9c865376ce17a88df2c4fe86297e7d10",
+      "image_id": "sha256:7d3f77de03a01017d27fb9f2189d204c9c865376ce17a88df2c4fe86297e7d10",
+      "environment_fingerprint": "sha256:7829e9eb0cd2eb94e61f3d1a367ecaadac30bb4b68fa803c179ce3fdafb8f274",
       "libc": "glibc 2.41",
       "compiler": "clang",
+      "compiler_binaries": [
+        "/usr/bin/clang"
+      ],
       "compiler_sha256": "5a69616b5f14cf527a2b93a25e679d4f3ff98d9d4b25ffebd3e345e7895609a4"
+    },
+    {
+      "name": "clang-18",
+      "version": "18.1.8",
+      "image": "ccx-clang",
+      "image_digest": "sha256:7d3f77de03a01017d27fb9f2189d204c9c865376ce17a88df2c4fe86297e7d10",
+      "image_id": "sha256:7d3f77de03a01017d27fb9f2189d204c9c865376ce17a88df2c4fe86297e7d10",
+      "environment_fingerprint": "sha256:7829e9eb0cd2eb94e61f3d1a367ecaadac30bb4b68fa803c179ce3fdafb8f274",
+      "libc": "glibc 2.41",
+      "compiler": "clang-18",
+      "compiler_binaries": [
+        "/usr/bin/clang-18"
+      ],
+      "compiler_sha256": "87cb9b335139c395f84e4c50ecfd7ce46b7165b33766993d014c0330f703779c"
+    },
+    {
+      "name": "rust",
+      "version": "1.85.1",
+      "image": "ccx-rust",
+      "image_digest": "sha256:9539c9d9a54fef371de8d612ea35a3fae36ad7ad7f28c0a8e263eeea2a2217f4",
+      "image_id": "sha256:9539c9d9a54fef371de8d612ea35a3fae36ad7ad7f28c0a8e263eeea2a2217f4",
+      "environment_fingerprint": "sha256:b42f0d0d3ad4e59ea95e6e11a56cad4c3cc8dd95f2cbef0c6c95b2d5002b51c3",
+      "libc": "glibc 2.41",
+      "compiler": "rustc",
+      "compiler_binaries": [
+        "/usr/bin/rustc"
+      ],
+      "compiler_sha256": "b025a222f5ece933e05d47ee504012df4af454df569d86fa9d978dca4b04040b"
+    },
+    {
+      "name": "gdc",
+      "version": "14.2.0",
+      "image": "ccx-gcc",
+      "image_digest": "sha256:3778d4d751b6d2fc95c0df2dd9968903d5889ee4db60a3ad2b7a95db06bf2120",
+      "image_id": "sha256:3778d4d751b6d2fc95c0df2dd9968903d5889ee4db60a3ad2b7a95db06bf2120",
+      "environment_fingerprint": "sha256:3062e26d94e1cb23996a008b530a806af09c56426398daae4ff534ae2e85b9d7",
+      "libc": "glibc 2.41",
+      "compiler": "gdc-14",
+      "compiler_binaries": [
+        "/usr/bin/gdc-14"
+      ],
+      "compiler_sha256": "fea14a67f13f32a653e50ee3198666d234872396ac41d2f195020d36742b331c"
+    },
+    {
+      "name": "zig",
+      "version": "0.17.0",
+      "image": "ccx-gcc",
+      "image_digest": "sha256:3778d4d751b6d2fc95c0df2dd9968903d5889ee4db60a3ad2b7a95db06bf2120",
+      "image_id": "sha256:3778d4d751b6d2fc95c0df2dd9968903d5889ee4db60a3ad2b7a95db06bf2120",
+      "environment_fingerprint": "sha256:3062e26d94e1cb23996a008b530a806af09c56426398daae4ff534ae2e85b9d7",
+      "libc": "glibc 2.41",
+      "compiler": "zig",
+      "compiler_binaries": [
+        "/opt/zig/zig"
+      ],
+      "compiler_sha256": "8dbb0a15629c28edcd07a073f549d62ab535ea99e0958a7168f9bcdc59a01d5f"
+    },
+    {
+      "name": "odin",
+      "version": "odin version dev-2026-10-nightly:84bc3fc",
+      "image": "ccx-clang",
+      "image_digest": "sha256:7d3f77de03a01017d27fb9f2189d204c9c865376ce17a88df2c4fe86297e7d10",
+      "image_id": "sha256:7d3f77de03a01017d27fb9f2189d204c9c865376ce17a88df2c4fe86297e7d10",
+      "environment_fingerprint": "sha256:7829e9eb0cd2eb94e61f3d1a367ecaadac30bb4b68fa803c179ce3fdafb8f274",
+      "libc": "glibc 2.41",
+      "compiler": "odin",
+      "compiler_binaries": [
+        "/opt/odin/odin"
+      ],
+      "compiler_sha256": "9ac9e46d795be6294cbb10b7f41136439b04e916f3c89778bd7002744dac455c"
+    },
+    {
+      "name": "go",
+      "version": "go1.26.10",
+      "image": "ccx-gcc",
+      "image_digest": "sha256:3778d4d751b6d2fc95c0df2dd9968903d5889ee4db60a3ad2b7a95db06bf2120",
+      "image_id": "sha256:3778d4d751b6d2fc95c0df2dd9968903d5889ee4db60a3ad2b7a95db06bf2120",
+      "environment_fingerprint": "sha256:3062e26d94e1cb23996a008b530a806af09c56426398daae4ff534ae2e85b9d7",
+      "libc": "glibc 2.41",
+      "compiler": "go",
+      "compiler_binaries": [
+        "/usr/local/go/bin/go"
+      ],
+      "compiler_sha256": "0565d187a9903662e43ae339ec0fb7b2573cc1fd28d49e4cfc55a63880d7c9d0"
     }
   ]
 }

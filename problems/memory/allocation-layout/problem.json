@@ -1,0 +1,13 @@
+{
+  "id": "memory/allocation-layout",
+  "title": "Build and Traverse a Record Chain",
+  "category": "memory",
+  "difficulty": "cache_aware",
+  "ranked_metric": "instructions",
+  "summary": "Build records from an input stream and compute an order-sensitive checksum. Compare one allocation per record, a pooled linked layout, and contiguous values.",
+  "limits": { "time_ms": 10000, "memory_bytes": 536870912, "output_bytes": 1048576 },
+  "seeds": { "public": [601, 607, 613], "hidden": [900003001, 900003007] },
+  "reference_language": "cpp",
+  "judge": "exact",
+  "sizes": { "naive": 5000, "good": 50000, "great": 200000 }
+}

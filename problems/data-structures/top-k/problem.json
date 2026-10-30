@@ -1,0 +1,13 @@
+{
+  "id": "data-structures/top-k",
+  "title": "Select the Largest K Values",
+  "category": "data-structures",
+  "difficulty": "medium",
+  "ranked_metric": "instructions",
+  "summary": "Return the K largest values in descending order. Compare maintaining a sorted result, a bounded min-heap, and partition-based selection.",
+  "limits": { "time_ms": 10000, "memory_bytes": 536870912, "output_bytes": 1048576 },
+  "seeds": { "public": [11, 29, 47], "hidden": [900000101, 900000203] },
+  "reference_language": "cpp",
+  "judge": "exact",
+  "sizes": { "naive": 2000, "good": 20000, "great": 120000 }
+}

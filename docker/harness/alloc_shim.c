@@ -18,34 +18,58 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <errno.h>
+#include <stdatomic.h>
+#include <stdint.h>
+#include <stddef.h>
 
 extern void *__real_malloc(size_t);
 extern void *__real_calloc(size_t, size_t);
 extern void *__real_realloc(void *, size_t);
 extern void __real_free(void *);
 
-static unsigned long long g_allocations = 0;
-static unsigned long long g_allocated_bytes = 0;
-static unsigned long long g_frees = 0;
-static unsigned long long g_peak_live_bytes = 0;
-static unsigned long long g_live_bytes = 0;
-static int g_reported = 0;
+typedef union AllocationHeader {
+    max_align_t alignment;
+    struct {
+        void *base;
+        size_t size;
+    } value;
+} AllocationHeader;
+
+static _Atomic unsigned long long g_allocations = 0;
+static _Atomic unsigned long long g_allocated_bytes = 0;
+static _Atomic unsigned long long g_frees = 0;
+static _Atomic unsigned long long g_peak_live_bytes = 0;
+static _Atomic unsigned long long g_live_bytes = 0;
+static _Atomic int g_reported = 0;
+static _Thread_local int g_suspended = 0;
 
 static void account_alloc(size_t bytes) {
-    g_allocations++;
-    g_allocated_bytes += bytes;
-    g_live_bytes += bytes;
-    if (g_live_bytes > g_peak_live_bytes) {
-        g_peak_live_bytes = g_live_bytes;
+    if (g_suspended) {
+        return;
+    }
+    atomic_fetch_add_explicit(&g_allocations, 1, memory_order_relaxed);
+    atomic_fetch_add_explicit(&g_allocated_bytes, bytes, memory_order_relaxed);
+    unsigned long long live = atomic_fetch_add_explicit(&g_live_bytes, bytes, memory_order_relaxed) + bytes;
+    unsigned long long peak = atomic_load_explicit(&g_peak_live_bytes, memory_order_relaxed);
+    while (live > peak && !atomic_compare_exchange_weak_explicit(
+               &g_peak_live_bytes, &peak, live, memory_order_relaxed, memory_order_relaxed)) {
     }
 }
 
 static void account_free(size_t bytes) {
-    g_frees++;
-    if (bytes <= g_live_bytes) {
-        g_live_bytes -= bytes;
-    } else {
-        g_live_bytes = 0;
+    if (g_suspended) {
+        return;
+    }
+    atomic_fetch_add_explicit(&g_frees, 1, memory_order_relaxed);
+    unsigned long long live = atomic_load_explicit(&g_live_bytes, memory_order_relaxed);
+    while (!atomic_compare_exchange_weak_explicit(
+        &g_live_bytes,
+        &live,
+        bytes <= live ? live - bytes : 0,
+        memory_order_relaxed,
+        memory_order_relaxed
+    )) {
     }
 }
 
@@ -54,62 +78,110 @@ static void account_free(size_t bytes) {
  * pointer, so free() can account for exactly what malloc() reserved. This keeps
  * `live_bytes` honest across realloc and mismatched allocators.
  */
-static size_t *header_of(void *ptr) {
-    return (size_t *)ptr - 1;
+static AllocationHeader *header_of(void *ptr) {
+    return (AllocationHeader *)ptr - 1;
+}
+
+void __wrap_free(void *ptr);
+
+static void *allocate_aligned(size_t size, size_t alignment, int clear) {
+    if (alignment < sizeof(void *) || (alignment & (alignment - 1)) != 0) {
+        errno = EINVAL;
+        return NULL;
+    }
+    if (size > SIZE_MAX - sizeof(AllocationHeader) - alignment + 1) {
+        errno = ENOMEM;
+        return NULL;
+    }
+    size_t total = size + sizeof(AllocationHeader) + alignment - 1;
+    void *base = __real_malloc(total);
+    if (!base) {
+        return NULL;
+    }
+    uintptr_t start = (uintptr_t)base + sizeof(AllocationHeader);
+    uintptr_t aligned = (start + alignment - 1) & ~(uintptr_t)(alignment - 1);
+    AllocationHeader *header = (AllocationHeader *)aligned - 1;
+    header->value.base = base;
+    header->value.size = size;
+    void *result = (void *)aligned;
+    if (clear && size > 0) {
+        memset(result, 0, size);
+    }
+    account_alloc(size);
+    return result;
 }
 
 void *__wrap_malloc(size_t size) {
-    size_t *raw = (size_t *)__real_malloc(size + sizeof(size_t));
-    if (!raw) {
-        return NULL;
-    }
-    raw[0] = size;
-    account_alloc(size);
-    return raw + 1;
+    return allocate_aligned(size, _Alignof(max_align_t), 0);
 }
 
 void *__wrap_calloc(size_t n, size_t size) {
-    size_t total = n * size;
-    size_t *raw = (size_t *)__real_calloc(1, total + sizeof(size_t));
-    if (!raw) {
+    if (size != 0 && n > SIZE_MAX / size) {
+        errno = ENOMEM;
         return NULL;
     }
-    raw[0] = total;
-    account_alloc(total);
-    return raw + 1;
+    return allocate_aligned(n * size, _Alignof(max_align_t), 1);
 }
 
 void *__wrap_realloc(void *ptr, size_t size) {
     if (!ptr) {
         return __wrap_malloc(size);
     }
-    size_t *raw = header_of(ptr);
-    size_t old = raw[0];
-    size_t *next = (size_t *)__real_realloc(raw, size + sizeof(size_t));
+    if (size == 0) {
+        __wrap_free(ptr);
+        return NULL;
+    }
+    AllocationHeader *header = header_of(ptr);
+    size_t old_size = header->value.size;
+    void *next = allocate_aligned(size, _Alignof(max_align_t), 0);
     if (!next) {
         return NULL;
     }
-    next[0] = size;
-    account_alloc(size);
-    account_free(old);
-    return next + 1;
+    memcpy(next, ptr, old_size < size ? old_size : size);
+    __wrap_free(ptr);
+    return next;
 }
 
 void __wrap_free(void *ptr) {
     if (!ptr) {
         return;
     }
-    size_t *raw = header_of(ptr);
-    size_t size = raw[0];
+    AllocationHeader *header = header_of(ptr);
+    size_t size = header->value.size;
+    void *base = header->value.base;
     account_free(size);
-    __real_free(raw);
+    __real_free(base);
+}
+
+int __wrap_posix_memalign(void **memptr, size_t alignment, size_t size) {
+    if (alignment < sizeof(void *) || (alignment & (alignment - 1)) != 0) {
+        return EINVAL;
+    }
+    void *result = allocate_aligned(size, alignment, 0);
+    if (!result) {
+        return errno == EINVAL ? EINVAL : ENOMEM;
+    }
+    *memptr = result;
+    return 0;
+}
+
+void *__wrap_aligned_alloc(size_t alignment, size_t size) {
+    if (alignment == 0 || size % alignment != 0) {
+        errno = EINVAL;
+        return NULL;
+    }
+    return allocate_aligned(size, alignment, 0);
+}
+
+void *__wrap_memalign(size_t alignment, size_t size) {
+    return allocate_aligned(size, alignment, 0);
 }
 
 __attribute__((destructor)) static void report(void) {
-    if (g_reported) {
+    if (atomic_exchange_explicit(&g_reported, 1, memory_order_relaxed)) {
         return;
     }
-    g_reported = 1;
+    g_suspended = 1;
     const char *path = getenv("CCX_ALLOC_OUT");
     if (!path || !*path) {
         return;
@@ -121,6 +193,9 @@ __attribute__((destructor)) static void report(void) {
     fprintf(f,
             "{\"allocations\":%llu,\"allocated_bytes\":%llu,\"frees\":%llu,"
             "\"peak_live_bytes\":%llu}\n",
-            g_allocations, g_allocated_bytes, g_frees, g_peak_live_bytes);
+            atomic_load_explicit(&g_allocations, memory_order_relaxed),
+            atomic_load_explicit(&g_allocated_bytes, memory_order_relaxed),
+            atomic_load_explicit(&g_frees, memory_order_relaxed),
+            atomic_load_explicit(&g_peak_live_bytes, memory_order_relaxed));
     fclose(f);
 }

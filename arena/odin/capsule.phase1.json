@@ -1,0 +1,727 @@
+{
+  "schema_version": 14,
+  "capsule_id": "704376d262450cd2a95be1b5c38b7c3371c5f10ce52955fc619d8c2dd583a530",
+  "created_at": "2026-10-29T06:44:24Z",
+  "problem": {
+    "id": "sorted-pair-sum",
+    "statement_sha256": "32dbfbfba61897c8b6f0e45f9b38df081f780acd78d82425d9ebc340fa8de195"
+  },
+  "source": {
+    "language": "odin",
+    "entry": "main.odin",
+    "files": {
+      ".gitignore": "sha256:46ea7d8bb40f92a6fbd84f619d337800725940f3169452a0e124d3b6d76d0f29",
+      "ccx.toml": "sha256:4f9b207dd0652de59116850cca7d4fec2c304aeea29e48f3b22ff57124ac0b9a",
+      "main.odin": "sha256:5477bec54528aefe1d8910d0a124b691f97a912c4ee58a1f61e5d2c8ab2820c7",
+      "problem/brute_force.cpp": "sha256:555c80e7196fea2aac6df053dc0246c7b6a5b5d4b64938c338edf1115988ea50",
+      "problem/checker.c": "sha256:b05b90b3b315fcd24e112bbb72a2dc4d67bc4d500bc7d5a8c23fdef5c2def4c5",
+      "problem/editorial.md": "sha256:c2b57d682cf42765b9904ecaf186cd276f83862505a8abe708979d629d9f5670",
+      "problem/generator.c": "sha256:6350e17753a81fe7bd8517c67c24daf4303a3574ca1676dac67876a7bebc339c",
+      "problem/hints.md": "sha256:0db153102dfa57905d464c59556285ed6c4536c62ea6221112c21771984b7ae7",
+      "problem/problem.json": "sha256:c6a831f6dfbfe05e610a885af42416f7c9933724f446692b6f348e5589d2666c",
+      "problem/reference.cpp": "sha256:6475f27cd094c84e8e016756f0682107dfbdbeb2453d14ea415c402cc85e9a23",
+      "problem/solutions/good.cpp": "sha256:66db75720cc62e85a52a905f6f4a534fe6d13a8f107cb630135c43de663cf330",
+      "problem/solutions/great.cpp": "sha256:d9b08380b046c0ba69da0d862158f90bf18e6e41dde6db487fb45733af94cda4",
+      "problem/solutions/naive.cpp": "sha256:b3b8b796c93c78161af1ac11be4f6902f55249443bb80966262c4020092bcb04",
+      "problem/statement.md": "sha256:32dbfbfba61897c8b6f0e45f9b38df081f780acd78d82425d9ebc340fa8de195"
+    },
+    "source_sha256": "5bfeea937eedbd6a321b4466099a9f739ce86966d0adbc84b353fb7ebb067152"
+  },
+  "toolchain": {
+    "name": "odin",
+    "version": "odin version dev-2026-10-nightly:84bc3fc",
+    "image": "ccx-clang",
+    "image_digest": "sha256:d057b87a5b1c64835f681e152c33fa32684e29bbe24708008870a362f74f561e",
+    "environment_fingerprint": "sha256:71bfef91791f73875d9805b2743a52f76ce56f9591139107a9b4e3ad1f8f4b92",
+    "libc": "glibc 2.41"
+  },
+  "build": {
+    "argv": [
+      "odin",
+      "build",
+      "-o:speed",
+      "-out:/work/scratch/sol",
+      "/src0/."
+    ],
+    "opt_level": "-O2",
+    "binary_sha256": "sha256:8a0d42489d4a3733ed6fc86e3cd141836cb1ea9bd26727bbba2be6f44c21ce15",
+    "build_repeat": 3,
+    "env": {
+      "LANG": "C",
+      "LC_ALL": "C",
+      "PATH": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+      "SOURCE_DATE_EPOCH": "0",
+      "TZ": "UTC"
+    },
+    "argv_program": [],
+    "stdin_sha256": "44e032d4ad3c14c67206485434407567ef9a5504e196e1b320b778fefc6ce8dc",
+    "stack_bytes": 8388608
+  },
+  "reference_build": {
+    "binary_sha256": "sha256:cb0984c6b9e86322da038fed09a1a2ed1fda7adedcdc14c0d7eeff3881f98573",
+    "argv": [
+      "clang++",
+      "-O2",
+      "-std=c++20",
+      "-ffile-prefix-map=/in=.",
+      "-fno-ident",
+      "-Wl,--build-id=none",
+      "-o",
+      "/work/scratch/ref",
+      "/src0/reference.cpp"
+    ]
+  },
+  "harness": {
+    "version": "0.16.0",
+    "metric_method": "cachegrind",
+    "ruleset": "e19a4134bad94934"
+  },
+  "input": {
+    "generator": "generator.c",
+    "seed": 42,
+    "seed_set": "public",
+    "size": 20000
+  },
+  "host": {
+    "cpu_model": "12th Gen Intel(R) Core(TM) i5-12450HX",
+    "arch": "x86_64",
+    "os": "Ubuntu 26.04 LTS",
+    "kernel": "6.18.33.2-microsoft-standard-WSL2",
+    "nproc": 12,
+    "frequency_policy": "unknown",
+    "fingerprint": "42296ce047d3563fbc36f5e395ad98bdeb5d04e4cedd82ccd63004f2786eebc0"
+  },
+  "verdict": "accepted",
+  "metrics": [
+    {
+      "name": "instructions",
+      "value": 6569485.0,
+      "unit": "count",
+      "kind": "simulated",
+      "method": "cachegrind",
+      "uncertainty": {
+        "kind": "ci95",
+        "value": 0.0
+      }
+    },
+    {
+      "name": "cache_misses",
+      "value": 19270.0,
+      "unit": "count",
+      "kind": "simulated",
+      "method": "cachegrind",
+      "uncertainty": {
+        "kind": "ci95",
+        "value": 0.0
+      }
+    },
+    {
+      "name": "branch_misses",
+      "value": 189836.0,
+      "unit": "count",
+      "kind": "simulated",
+      "method": "cachegrind",
+      "uncertainty": {
+        "kind": "ci95",
+        "value": 0.0
+      }
+    },
+    {
+      "name": "instruction_cache_misses",
+      "value": 1456.0,
+      "unit": "count",
+      "kind": "simulated",
+      "method": "cachegrind",
+      "uncertainty": {
+        "kind": "ci95",
+        "value": 0.0
+      }
+    },
+    {
+      "name": "data_cache_misses",
+      "value": 17814.0,
+      "unit": "count",
+      "kind": "simulated",
+      "method": "cachegrind",
+      "uncertainty": {
+        "kind": "ci95",
+        "value": 0.0
+      }
+    },
+    {
+      "name": "data_refs",
+      "value": 989895.0,
+      "unit": "count",
+      "kind": "simulated",
+      "method": "cachegrind",
+      "uncertainty": {
+        "kind": "ci95",
+        "value": 0.0
+      }
+    },
+    {
+      "name": "data_reads",
+      "value": 735388.0,
+      "unit": "count",
+      "kind": "simulated",
+      "method": "cachegrind",
+      "uncertainty": {
+        "kind": "ci95",
+        "value": 0.0
+      }
+    },
+    {
+      "name": "data_writes",
+      "value": 254507.0,
+      "unit": "count",
+      "kind": "simulated",
+      "method": "cachegrind",
+      "uncertainty": {
+        "kind": "ci95",
+        "value": 0.0
+      }
+    },
+    {
+      "name": "branch_instructions",
+      "value": 1456541.0,
+      "unit": "count",
+      "kind": "simulated",
+      "method": "cachegrind",
+      "uncertainty": {
+        "kind": "ci95",
+        "value": 0.0
+      }
+    },
+    {
+      "name": "cache_miss_rate",
+      "value": 0.002549150856287156,
+      "unit": "ratio",
+      "kind": "simulated",
+      "method": "cachegrind",
+      "uncertainty": {
+        "kind": "ci95",
+        "value": 0.0
+      }
+    },
+    {
+      "name": "branch_miss_rate",
+      "value": 0.13033344066524732,
+      "unit": "ratio",
+      "kind": "simulated",
+      "method": "cachegrind",
+      "uncertainty": {
+        "kind": "ci95",
+        "value": 0.0
+      }
+    },
+    {
+      "name": "memory_refs",
+      "value": 7559380.0,
+      "unit": "count",
+      "kind": "simulated",
+      "method": "cachegrind",
+      "uncertainty": {
+        "kind": "ci95",
+        "value": 0.0
+      }
+    },
+    {
+      "name": "branches",
+      "value": 1456541.0,
+      "unit": "count",
+      "kind": "simulated",
+      "method": "cachegrind",
+      "uncertainty": {
+        "kind": "ci95",
+        "value": 0.0
+      }
+    },
+    {
+      "name": "peak_memory",
+      "value": 2170880.0,
+      "unit": "bytes",
+      "kind": "indicative",
+      "method": "getrusage",
+      "uncertainty": {
+        "kind": "ci95",
+        "value": 31744.0
+      }
+    },
+    {
+      "name": "stdout_bytes",
+      "value": 9.0,
+      "unit": "bytes",
+      "kind": "measured",
+      "method": "runner",
+      "uncertainty": {
+        "kind": "ci95",
+        "value": 0.0
+      }
+    },
+    {
+      "name": "stderr_bytes",
+      "value": 0.0,
+      "unit": "bytes",
+      "kind": "measured",
+      "method": "runner",
+      "uncertainty": {
+        "kind": "ci95",
+        "value": 0.0
+      }
+    },
+    {
+      "name": "user_cpu_time",
+      "value": 2979500.0,
+      "unit": "nanoseconds",
+      "kind": "measured",
+      "method": "getrusage",
+      "uncertainty": {
+        "kind": "ci95",
+        "value": 226250.0
+      }
+    },
+    {
+      "name": "system_cpu_time",
+      "value": 0.0,
+      "unit": "nanoseconds",
+      "kind": "measured",
+      "method": "getrusage",
+      "uncertainty": {
+        "kind": "ci95",
+        "value": 0.0
+      }
+    },
+    {
+      "name": "minor_page_faults",
+      "value": 176.0,
+      "unit": "count",
+      "kind": "measured",
+      "method": "getrusage",
+      "uncertainty": {
+        "kind": "ci95",
+        "value": 1.5
+      }
+    },
+    {
+      "name": "major_page_faults",
+      "value": 0.0,
+      "unit": "count",
+      "kind": "measured",
+      "method": "getrusage",
+      "uncertainty": {
+        "kind": "ci95",
+        "value": 0.0
+      }
+    },
+    {
+      "name": "voluntary_context_switches",
+      "value": 1.0,
+      "unit": "count",
+      "kind": "measured",
+      "method": "getrusage",
+      "uncertainty": {
+        "kind": "ci95",
+        "value": 0.0
+      }
+    },
+    {
+      "name": "involuntary_context_switches",
+      "value": 1.5,
+      "unit": "count",
+      "kind": "measured",
+      "method": "getrusage",
+      "uncertainty": {
+        "kind": "ci95",
+        "value": 1.5
+      }
+    },
+    {
+      "name": "block_input_ops",
+      "value": 0.0,
+      "unit": "count",
+      "kind": "measured",
+      "method": "getrusage",
+      "uncertainty": {
+        "kind": "ci95",
+        "value": 0.0
+      }
+    },
+    {
+      "name": "block_output_ops",
+      "value": 0.0,
+      "unit": "count",
+      "kind": "measured",
+      "method": "getrusage",
+      "uncertainty": {
+        "kind": "ci95",
+        "value": 0.0
+      }
+    },
+    {
+      "name": "binary_size",
+      "value": 230416.0,
+      "unit": "bytes",
+      "kind": "measured",
+      "method": "stat",
+      "uncertainty": {
+        "kind": "ci95",
+        "value": 0.0
+      }
+    },
+    {
+      "name": "wall_clock",
+      "value": 3347126.5,
+      "unit": "nanoseconds",
+      "kind": "indicative",
+      "method": "wall_clock",
+      "uncertainty": {
+        "kind": "ci95",
+        "value": 864742.25
+      }
+    },
+    {
+      "name": "reference_wall_clock",
+      "value": 4541944.0,
+      "unit": "nanoseconds",
+      "kind": "indicative",
+      "method": "wall_clock",
+      "uncertainty": {
+        "kind": "ci95",
+        "value": 417023.75
+      }
+    },
+    {
+      "name": "paired_speedup_ratio",
+      "value": 1.2950230007107544,
+      "unit": "ratio",
+      "kind": "indicative",
+      "method": "wall_clock",
+      "uncertainty": {
+        "kind": "ci95",
+        "value": 0.15479073050589565
+      }
+    },
+    {
+      "name": "build_system_cpu_time",
+      "value": 924878000.0,
+      "unit": "nanoseconds",
+      "kind": "measured",
+      "method": "getrusage",
+      "uncertainty": {
+        "kind": "ci95",
+        "value": 749268000.0
+      }
+    },
+    {
+      "name": "build_user_cpu_time",
+      "value": 3348863000.0,
+      "unit": "nanoseconds",
+      "kind": "measured",
+      "method": "getrusage",
+      "uncertainty": {
+        "kind": "ci95",
+        "value": 176806000.0
+      }
+    },
+    {
+      "name": "build_wall_clock",
+      "value": 4278223646.0,
+      "unit": "nanoseconds",
+      "kind": "measured",
+      "method": "wall_clock",
+      "uncertainty": {
+        "kind": "ci95",
+        "value": 914900526.0
+      }
+    }
+  ],
+  "repeatability": {
+    "runs": 20,
+    "per_metric": {
+      "binary_size": {
+        "samples": 20,
+        "min": 230416.0,
+        "max": 230416.0,
+        "median": 230416.0,
+        "spread_pct": 0.0,
+        "p95": 230416.0,
+        "p99": 230416.0
+      },
+      "block_input_ops": {
+        "samples": 20,
+        "min": 0.0,
+        "max": 0.0,
+        "median": 0.0,
+        "spread_pct": 0.0,
+        "p95": 0.0,
+        "p99": 0.0
+      },
+      "block_output_ops": {
+        "samples": 20,
+        "min": 0.0,
+        "max": 0.0,
+        "median": 0.0,
+        "spread_pct": 0.0,
+        "p95": 0.0,
+        "p99": 0.0
+      },
+      "branch_instructions": {
+        "samples": 20,
+        "min": 1456541.0,
+        "max": 1456541.0,
+        "median": 1456541.0,
+        "spread_pct": 0.0,
+        "p95": 1456541.0,
+        "p99": 1456541.0
+      },
+      "branch_miss_rate": {
+        "samples": 20,
+        "min": 0.13033344066524732,
+        "max": 0.13033344066524732,
+        "median": 0.13033344066524732,
+        "spread_pct": 0.0,
+        "p95": 0.13033344066524732,
+        "p99": 0.13033344066524732
+      },
+      "branch_misses": {
+        "samples": 20,
+        "min": 189836.0,
+        "max": 189836.0,
+        "median": 189836.0,
+        "spread_pct": 0.0,
+        "p95": 189836.0,
+        "p99": 189836.0
+      },
+      "branches": {
+        "samples": 20,
+        "min": 1456541.0,
+        "max": 1456541.0,
+        "median": 1456541.0,
+        "spread_pct": 0.0,
+        "p95": 1456541.0,
+        "p99": 1456541.0
+      },
+      "cache_miss_rate": {
+        "samples": 20,
+        "min": 0.002549150856287156,
+        "max": 0.002549150856287156,
+        "median": 0.002549150856287156,
+        "spread_pct": 0.0,
+        "p95": 0.002549150856287156,
+        "p99": 0.002549150856287156
+      },
+      "cache_misses": {
+        "samples": 20,
+        "min": 19270.0,
+        "max": 19270.0,
+        "median": 19270.0,
+        "spread_pct": 0.0,
+        "p95": 19270.0,
+        "p99": 19270.0
+      },
+      "data_cache_misses": {
+        "samples": 20,
+        "min": 17814.0,
+        "max": 17814.0,
+        "median": 17814.0,
+        "spread_pct": 0.0,
+        "p95": 17814.0,
+        "p99": 17814.0
+      },
+      "data_reads": {
+        "samples": 20,
+        "min": 735388.0,
+        "max": 735388.0,
+        "median": 735388.0,
+        "spread_pct": 0.0,
+        "p95": 735388.0,
+        "p99": 735388.0
+      },
+      "data_refs": {
+        "samples": 20,
+        "min": 989895.0,
+        "max": 989895.0,
+        "median": 989895.0,
+        "spread_pct": 0.0,
+        "p95": 989895.0,
+        "p99": 989895.0
+      },
+      "data_writes": {
+        "samples": 20,
+        "min": 254507.0,
+        "max": 254507.0,
+        "median": 254507.0,
+        "spread_pct": 0.0,
+        "p95": 254507.0,
+        "p99": 254507.0
+      },
+      "instruction_cache_misses": {
+        "samples": 20,
+        "min": 1456.0,
+        "max": 1456.0,
+        "median": 1456.0,
+        "spread_pct": 0.0,
+        "p95": 1456.0,
+        "p99": 1456.0
+      },
+      "instructions": {
+        "samples": 20,
+        "min": 6569485.0,
+        "max": 6569485.0,
+        "median": 6569485.0,
+        "spread_pct": 0.0,
+        "p95": 6569485.0,
+        "p99": 6569485.0
+      },
+      "involuntary_context_switches": {
+        "samples": 20,
+        "min": 0.0,
+        "max": 6.0,
+        "median": 1.5,
+        "spread_pct": 400.0,
+        "p95": 4.0,
+        "p99": 6.0
+      },
+      "major_page_faults": {
+        "samples": 20,
+        "min": 0.0,
+        "max": 0.0,
+        "median": 0.0,
+        "spread_pct": 0.0,
+        "p95": 0.0,
+        "p99": 0.0
+      },
+      "memory_refs": {
+        "samples": 20,
+        "min": 7559380.0,
+        "max": 7559380.0,
+        "median": 7559380.0,
+        "spread_pct": 0.0,
+        "p95": 7559380.0,
+        "p99": 7559380.0
+      },
+      "minor_page_faults": {
+        "samples": 20,
+        "min": 171.0,
+        "max": 179.0,
+        "median": 176.0,
+        "spread_pct": 4.545454545454546,
+        "p95": 179.0,
+        "p99": 179.0
+      },
+      "paired_speedup_ratio": {
+        "samples": 20,
+        "min": 0.5624568347092095,
+        "max": 2.670347318971975,
+        "median": 1.2950230007107544,
+        "spread_pct": 162.76857500645787,
+        "p95": 2.001888978830235,
+        "p99": 2.670347318971975
+      },
+      "peak_memory": {
+        "samples": 20,
+        "min": 2027520.0,
+        "max": 2322432.0,
+        "median": 2170880.0,
+        "spread_pct": 13.584905660377359,
+        "p95": 2322432.0,
+        "p99": 2322432.0
+      },
+      "reference_wall_clock": {
+        "samples": 20,
+        "min": 3840395.0,
+        "max": 7628488.0,
+        "median": 4541944.0,
+        "spread_pct": 83.4024593874341,
+        "p95": 6338503.0,
+        "p99": 7628488.0
+      },
+      "stderr_bytes": {
+        "samples": 20,
+        "min": 0.0,
+        "max": 0.0,
+        "median": 0.0,
+        "spread_pct": 0.0,
+        "p95": 0.0,
+        "p99": 0.0
+      },
+      "stdout_bytes": {
+        "samples": 20,
+        "min": 9.0,
+        "max": 9.0,
+        "median": 9.0,
+        "spread_pct": 0.0,
+        "p95": 9.0,
+        "p99": 9.0
+      },
+      "system_cpu_time": {
+        "samples": 20,
+        "min": 0.0,
+        "max": 4227000.0,
+        "median": 0.0,
+        "spread_pct": 422700000.0,
+        "p95": 3537000.0,
+        "p99": 4227000.0
+      },
+      "user_cpu_time": {
+        "samples": 20,
+        "min": 0.0,
+        "max": 7653000.0,
+        "median": 2979500.0,
+        "spread_pct": 256.85517704312804,
+        "p95": 5813000.0,
+        "p99": 7653000.0
+      },
+      "voluntary_context_switches": {
+        "samples": 20,
+        "min": 1.0,
+        "max": 1.0,
+        "median": 1.0,
+        "spread_pct": 0.0,
+        "p95": 1.0,
+        "p99": 1.0
+      },
+      "wall_clock": {
+        "samples": 20,
+        "min": 2830261.0,
+        "max": 7912897.0,
+        "median": 3347126.5,
+        "spread_pct": 151.85072927479735,
+        "p95": 7277839.0,
+        "p99": 7912897.0
+      }
+    }
+  },
+  "build_repeatability": {
+    "runs": 3,
+    "per_metric": {
+      "build_system_cpu_time": {
+        "samples": 3,
+        "min": 826424000.0,
+        "max": 2324960000.0,
+        "median": 924878000.0,
+        "spread_pct": 162.02526171019315,
+        "p95": 2324960000.0,
+        "p99": 2324960000.0
+      },
+      "build_user_cpu_time": {
+        "samples": 3,
+        "min": 3261998000.0,
+        "max": 3615610000.0,
+        "median": 3348863000.0,
+        "spread_pct": 10.559165901979268,
+        "p95": 3615610000.0,
+        "p99": 3615610000.0
+      },
+      "build_wall_clock": {
+        "samples": 3,
+        "min": 4132725870.0,
+        "max": 5962526922.0,
+        "median": 4278223646.0,
+        "spread_pct": 42.770112163509836,
+        "p95": 5962526922.0,
+        "p99": 5962526922.0
+      }
+    }
+  }
+}

@@ -39,7 +39,7 @@ impl CachegrindCounts {
     }
 
     pub fn to_metrics(&self) -> Vec<Metric> {
-        vec![
+        let mut metrics = vec![
             Metric::count(
                 "instructions",
                 self.instructions(),
@@ -58,7 +58,65 @@ impl CachegrindCounts {
                 MetricKind::Simulated,
                 MetricMethod::Cachegrind,
             ),
-        ]
+            Metric::count(
+                "instruction_cache_misses",
+                self.instruction_cache_misses,
+                MetricKind::Simulated,
+                MetricMethod::Cachegrind,
+            ),
+            Metric::count(
+                "data_cache_misses",
+                self.data_cache_misses,
+                MetricKind::Simulated,
+                MetricMethod::Cachegrind,
+            ),
+            Metric::count(
+                "data_refs",
+                self.data_refs,
+                MetricKind::Simulated,
+                MetricMethod::Cachegrind,
+            ),
+            Metric::count(
+                "data_reads",
+                self.data_reads,
+                MetricKind::Simulated,
+                MetricMethod::Cachegrind,
+            ),
+            Metric::count(
+                "data_writes",
+                self.data_writes,
+                MetricKind::Simulated,
+                MetricMethod::Cachegrind,
+            ),
+            Metric::count(
+                "branch_instructions",
+                self.branch_instructions,
+                MetricKind::Simulated,
+                MetricMethod::Cachegrind,
+            ),
+        ];
+        let refs = self.data_refs.saturating_add(self.instruction_refs);
+        if refs > 0 {
+            metrics.push(Metric {
+                name: "cache_miss_rate".to_string(),
+                value: self.total_cache_misses() as f64 / refs as f64,
+                unit: "ratio".to_string(),
+                kind: MetricKind::Simulated,
+                method: MetricMethod::Cachegrind,
+                uncertainty: None,
+            });
+        }
+        if self.branch_instructions > 0 {
+            metrics.push(Metric {
+                name: "branch_miss_rate".to_string(),
+                value: self.branch_misses as f64 / self.branch_instructions as f64,
+                unit: "ratio".to_string(),
+                kind: MetricKind::Simulated,
+                method: MetricMethod::Cachegrind,
+                uncertainty: None,
+            });
+        }
+        metrics
     }
 }
 
@@ -66,6 +124,12 @@ impl CachegrindCounts {
 pub enum ParseError {
     #[error("no cachegrind summary found in output")]
     MissingSummary,
+    #[error("cachegrind summary is missing required counter: {0}")]
+    IncompleteSummary(String),
+    #[error("cachegrind summary contains a duplicate counter: {0}")]
+    DuplicateCounter(String),
+    #[error("cachegrind counter overflow while summing traced processes: {0}")]
+    CounterOverflow(String),
     #[error("malformed cachegrind line: {0}")]
     Malformed(String),
     #[error("cachegrind reported an error: {0}")]
@@ -79,11 +143,14 @@ pub enum ParseError {
 /// does not break parsing.
 pub fn parse_cachegrind_summary(stderr: &str) -> Result<CachegrindCounts, ParseError> {
     if stderr.contains("==error calling PR_SET_PTRACER") || stderr.contains("valgrind: failed") {
-        return Err(ParseError::Cachegrind(stderr.lines().next().unwrap_or("").to_string()));
+        return Err(ParseError::Cachegrind(
+            stderr.lines().next().unwrap_or("").to_string(),
+        ));
     }
 
-    let mut counts = CachegrindCounts::default();
-    let mut seen_any = false;
+    let mut total = CachegrindCounts::default();
+    let mut current = CachegrindCounts::default();
+    let mut seen = 0u16;
 
     for line in stderr.lines() {
         let line = line.trim();
@@ -110,24 +177,182 @@ pub fn parse_cachegrind_summary(stderr: &str) -> Result<CachegrindCounts, ParseE
 
         match name.as_str() {
             "I refs" => {
-                counts.instruction_refs = value;
-                seen_any = true;
+                if seen != 0 {
+                    require_complete_summary(seen)?;
+                    add_cachegrind_counts(&mut total, &current)?;
+                    current = CachegrindCounts::default();
+                    seen = 0;
+                }
+                set_cachegrind_counter(
+                    &mut current.instruction_refs,
+                    value,
+                    &mut seen,
+                    1 << 0,
+                    "I refs",
+                )?;
             }
-            "D refs" => counts.data_refs = value,
-            "D1 misses" => counts.data_cache_misses = value,
-            "I1 misses" => counts.instruction_cache_misses = value,
-            "Dr" => counts.data_reads = value,
-            "Dw" => counts.data_writes = value,
-            "Branches" => counts.branch_instructions = value,
-            "Mispredicts" => counts.branch_misses = value,
+            "D refs" => {
+                set_cachegrind_counter(&mut current.data_refs, value, &mut seen, 1 << 1, "D refs")?;
+                let breakdown = rest
+                    .split_once('(')
+                    .map(|(_, text)| text.split(')').next().unwrap_or(text))
+                    .unwrap_or("");
+                let tokens: Vec<&str> = breakdown.split_whitespace().collect();
+                for pair in tokens.windows(2) {
+                    let parsed = pair[0].replace(',', "").parse::<u64>().ok();
+                    match (pair[1], parsed) {
+                        ("rd", Some(reads)) => set_cachegrind_counter(
+                            &mut current.data_reads,
+                            reads,
+                            &mut seen,
+                            1 << 2,
+                            "data reads",
+                        )?,
+                        ("wr", Some(writes)) => set_cachegrind_counter(
+                            &mut current.data_writes,
+                            writes,
+                            &mut seen,
+                            1 << 3,
+                            "data writes",
+                        )?,
+                        _ => {}
+                    }
+                }
+            }
+            "D1 misses" => set_cachegrind_counter(
+                &mut current.data_cache_misses,
+                value,
+                &mut seen,
+                1 << 4,
+                "D1 misses",
+            )?,
+            "I1 misses" => set_cachegrind_counter(
+                &mut current.instruction_cache_misses,
+                value,
+                &mut seen,
+                1 << 5,
+                "I1 misses",
+            )?,
+            "Dr" => set_cachegrind_counter(
+                &mut current.data_reads,
+                value,
+                &mut seen,
+                1 << 2,
+                "data reads",
+            )?,
+            "Dw" => set_cachegrind_counter(
+                &mut current.data_writes,
+                value,
+                &mut seen,
+                1 << 3,
+                "data writes",
+            )?,
+            "Branches" => set_cachegrind_counter(
+                &mut current.branch_instructions,
+                value,
+                &mut seen,
+                1 << 6,
+                "Branches",
+            )?,
+            "Mispredicts" => set_cachegrind_counter(
+                &mut current.branch_misses,
+                value,
+                &mut seen,
+                1 << 7,
+                "Mispredicts",
+            )?,
             _ => continue,
         }
     }
 
-    if !seen_any {
+    if seen == 0 {
         return Err(ParseError::MissingSummary);
     }
-    Ok(counts)
+    require_complete_summary(seen)?;
+    add_cachegrind_counts(&mut total, &current)?;
+    total
+        .instruction_cache_misses
+        .checked_add(total.data_cache_misses)
+        .ok_or_else(|| ParseError::CounterOverflow("total cache misses".to_string()))?;
+    total
+        .instruction_refs
+        .checked_add(total.data_refs)
+        .ok_or_else(|| ParseError::CounterOverflow("total memory references".to_string()))?;
+    Ok(total)
+}
+
+fn set_cachegrind_counter(
+    slot: &mut u64,
+    value: u64,
+    seen: &mut u16,
+    bit: u16,
+    name: &str,
+) -> Result<(), ParseError> {
+    if *seen & bit != 0 {
+        return Err(ParseError::DuplicateCounter(name.to_string()));
+    }
+    *slot = value;
+    *seen |= bit;
+    Ok(())
+}
+
+fn require_complete_summary(seen: u16) -> Result<(), ParseError> {
+    for (bit, name) in [
+        (0, "I refs"),
+        (1, "D refs"),
+        (2, "data reads"),
+        (3, "data writes"),
+        (4, "D1 misses"),
+        (5, "I1 misses"),
+        (6, "Branches"),
+        (7, "Mispredicts"),
+    ] {
+        if seen & (1 << bit) == 0 {
+            return Err(ParseError::IncompleteSummary(name.to_string()));
+        }
+    }
+    Ok(())
+}
+
+fn add_cachegrind_counts(
+    total: &mut CachegrindCounts,
+    current: &CachegrindCounts,
+) -> Result<(), ParseError> {
+    let add = |target: &mut u64, value: u64, name: &str| {
+        *target = target
+            .checked_add(value)
+            .ok_or_else(|| ParseError::CounterOverflow(name.to_string()))?;
+        Ok::<(), ParseError>(())
+    };
+    add(
+        &mut total.instruction_refs,
+        current.instruction_refs,
+        "I refs",
+    )?;
+    add(&mut total.data_refs, current.data_refs, "D refs")?;
+    add(&mut total.data_reads, current.data_reads, "data reads")?;
+    add(&mut total.data_writes, current.data_writes, "data writes")?;
+    add(
+        &mut total.instruction_cache_misses,
+        current.instruction_cache_misses,
+        "I1 misses",
+    )?;
+    add(
+        &mut total.data_cache_misses,
+        current.data_cache_misses,
+        "D1 misses",
+    )?;
+    add(
+        &mut total.branch_instructions,
+        current.branch_instructions,
+        "Branches",
+    )?;
+    add(
+        &mut total.branch_misses,
+        current.branch_misses,
+        "Mispredicts",
+    )?;
+    Ok(())
 }
 
 /// Parse `perf stat` output for the hardware counters we care about.
@@ -152,7 +377,7 @@ pub fn parse_perf_stat(stderr: &str) -> Option<(u64, u64, u64)> {
         let name = name.trim();
         if name.starts_with("instructions") {
             instructions = Some(value);
-        } else if name.starts_with("cache-misses") || name.starts_with("cache-misses") {
+        } else if name.starts_with("cache-misses") {
             cache_misses = Some(value);
         } else if name.starts_with("branch-misses") {
             branch_misses = Some(value);
@@ -161,7 +386,6 @@ pub fn parse_perf_stat(stderr: &str) -> Option<(u64, u64, u64)> {
 
     match (instructions, cache_misses, branch_misses) {
         (Some(i), Some(c), Some(b)) => Some((i, c, b)),
-        (Some(i), _, _) => Some((i, cache_misses.unwrap_or(0), branch_misses.unwrap_or(0))),
         _ => None,
     }
 }
@@ -197,6 +421,8 @@ mod tests {
         assert_eq!(c.instruction_refs, 1_234_567);
         assert_eq!(c.instruction_cache_misses, 1_024);
         assert_eq!(c.data_refs, 456_789);
+        assert_eq!(c.data_reads, 300_000);
+        assert_eq!(c.data_writes, 156_789);
         assert_eq!(c.data_cache_misses, 2_048);
         assert_eq!(c.branch_instructions, 50_000);
         assert_eq!(c.branch_misses, 1_500);
@@ -216,6 +442,27 @@ mod tests {
             assert_eq!(m.kind, MetricKind::Simulated);
             assert_eq!(m.method, MetricMethod::Cachegrind);
         }
+        let metrics = c.to_metrics();
+        for name in [
+            "instruction_cache_misses",
+            "data_cache_misses",
+            "data_refs",
+            "data_reads",
+            "data_writes",
+            "branch_instructions",
+            "cache_miss_rate",
+            "branch_miss_rate",
+        ] {
+            assert!(metrics.iter().any(|metric| metric.name == name));
+        }
+        assert_eq!(
+            metrics
+                .iter()
+                .find(|metric| metric.name == "branch_miss_rate")
+                .unwrap()
+                .value,
+            0.03
+        );
     }
 
     #[test]
@@ -225,12 +472,81 @@ mod tests {
     }
 
     #[test]
+    fn incomplete_summary_does_not_turn_missing_counters_into_zero() {
+        let err = parse_cachegrind_summary("==12345== I refs: 1,234,567\n").unwrap_err();
+        assert!(matches!(
+            err,
+            ParseError::IncompleteSummary(name) if name == "D refs"
+        ));
+    }
+
+    #[test]
+    fn traced_process_summaries_are_accumulated() {
+        let first = SAMPLE.replace("12345", "100");
+        let second = SAMPLE.replace("12345", "101");
+        let counts = parse_cachegrind_summary(&format!("{first}{second}")).unwrap();
+        assert_eq!(counts.instruction_refs, 2 * 1_234_567);
+        assert_eq!(counts.data_refs, 2 * 456_789);
+        assert_eq!(counts.data_reads, 2 * 300_000);
+        assert_eq!(counts.data_writes, 2 * 156_789);
+        assert_eq!(counts.total_cache_misses(), 2 * (1_024 + 2_048));
+        assert_eq!(counts.branch_instructions, 100_000);
+        assert_eq!(counts.branch_misses, 3_000);
+    }
+
+    #[test]
+    fn incomplete_traced_process_is_rejected_before_the_next_summary() {
+        let text = format!(
+            "==100== I refs: 1\n==100== D refs: 2 (1 rd + 1 wr)\n{}",
+            SAMPLE.replace("12345", "101")
+        );
+        let err = parse_cachegrind_summary(&text).unwrap_err();
+        assert!(matches!(
+            err,
+            ParseError::IncompleteSummary(name) if name == "D1 misses"
+        ));
+    }
+
+    #[test]
+    fn repeated_counter_lines_in_one_process_are_rejected() {
+        let text = SAMPLE.replace(
+            "I1  misses:        1,024",
+            "I1  misses:        1,024\n==12345== I1  misses:        1,024",
+        );
+        let err = parse_cachegrind_summary(&text).unwrap_err();
+        assert!(matches!(err, ParseError::DuplicateCounter(name) if name == "I1 misses"));
+    }
+
+    #[test]
+    fn traced_counter_sum_overflow_is_rejected() {
+        let first = SAMPLE.replace("1,234,567", "18446744073709551615");
+        let second = SAMPLE.replace("12345", "101");
+        let err = parse_cachegrind_summary(&format!("{first}{second}")).unwrap_err();
+        assert!(matches!(err, ParseError::CounterOverflow(name) if name == "I refs"));
+    }
+
+    #[test]
+    fn complete_zero_counters_are_valid_measurements() {
+        let text = "I refs: 0\nI1 misses: 0\nD refs: 0 (0 rd + 0 wr)\nD1 misses: 0\nBranches: 0 (0 cond + 0 ind)\nMispredicts: 0\n";
+        let counts = parse_cachegrind_summary(text).unwrap();
+        assert_eq!(counts, CachegrindCounts::default());
+    }
+
+    #[test]
     fn parses_perf_stat() {
         let text = "      1,234,567      instructions\n         12,345      cache-misses\n          1,234      branch-misses\n";
         let (i, c, b) = parse_perf_stat(text).unwrap();
         assert_eq!(i, 1_234_567);
         assert_eq!(c, 12_345);
         assert_eq!(b, 1_234);
+    }
+
+    #[test]
+    fn partial_perf_stat_does_not_fabricate_missing_counters() {
+        assert_eq!(
+            parse_perf_stat("1,234 instructions\n12 cache-misses\n"),
+            None
+        );
     }
 
     #[test]

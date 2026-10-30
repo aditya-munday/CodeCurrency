@@ -1,0 +1,5 @@
+problem = "../../problems/sorted-pair-sum"
+language = "go"
+toolchain = "go"
+opt_level = "-O2"
+run_command = ["env", "GOMAXPROCS=1", "GODEBUG=randautoseed=0,asyncpreemptoff=1", "{binary}", "{args}"]
