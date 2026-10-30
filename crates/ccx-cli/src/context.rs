@@ -35,6 +35,7 @@ pub struct Solution {
     pub run_command: Vec<String>,
     pub build_system: BuildSystem,
     pub cmake_generator: CmakeGenerator,
+    pub cmake_target: String,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
@@ -141,6 +142,30 @@ impl Default for CmakeGenerator {
     fn default() -> Self {
         Self::Ninja
     }
+}
+
+pub fn default_cmake_target() -> String {
+    "ccx_solution".into()
+}
+
+pub fn validate_cmake_target(target: &str) -> Result<(), String> {
+    let mut chars = target.chars();
+    let valid_first = chars
+        .next()
+        .is_some_and(|ch| ch.is_ascii_alphanumeric() || ch == '_');
+    let valid_rest =
+        chars.all(|ch| ch.is_ascii_alphanumeric() || matches!(ch, '_' | '-' | '.' | '+'));
+    if target.len() > 128
+        || !valid_first
+        || !valid_rest
+        || matches!(
+            target,
+            "all" | "clean" | "help" | "install" | "test" | "package" | "package_source"
+        )
+    {
+        return Err("cmake_target must name an executable target using at most 128 ASCII letters, digits, underscores, dots, plus signs, or hyphens; CMake built-in targets are not allowed".into());
+    }
+    Ok(())
 }
 
 impl Default for BuildSystem {
@@ -255,6 +280,11 @@ impl Solution {
             .into_error());
         }
         if cfg.build_system == BuildSystem::Cmake {
+            validate_cmake_target(&cfg.cmake_target).map_err(|message| {
+                Fixable::new(message)
+                    .fix("set cmake_target to the executable target defined by CMakeLists.txt")
+                    .into_error()
+            })?;
             if !matches!(language, Language::C | Language::Cpp) {
                 return Err(Fixable::new("CMake builds are currently supported for C and C++")
                     .fix("use `build_system = \"direct\"` for Rust, D, Zig, Odin, Go, or assembly")
@@ -319,6 +349,7 @@ impl Solution {
             run_command: cfg.run_command,
             build_system: cfg.build_system,
             cmake_generator: cfg.cmake_generator,
+            cmake_target: cfg.cmake_target,
         })
     }
 
@@ -364,6 +395,7 @@ impl Solution {
             run_command: Vec::new(),
             build_system: BuildSystem::Direct,
             cmake_generator: CmakeGenerator::default(),
+            cmake_target: default_cmake_target(),
         })
     }
 
@@ -446,6 +478,8 @@ pub struct SolutionConfig {
     pub build_system: BuildSystem,
     #[serde(default)]
     pub cmake_generator: CmakeGenerator,
+    #[serde(default = "default_cmake_target")]
+    pub cmake_target: String,
 }
 
 fn default_language() -> String {
@@ -663,6 +697,7 @@ mod tests {
             target_arch: "x86_64".into(),
             build_system: BuildSystem::Direct,
             cmake_generator: CmakeGenerator::default(),
+            cmake_target: default_cmake_target(),
         }
     }
 
@@ -809,6 +844,37 @@ mod tests {
         .unwrap();
         assert_eq!(default.cmake_generator, CmakeGenerator::Ninja);
         assert_eq!(makefiles.cmake_generator, CmakeGenerator::UnixMakefiles);
+    }
+
+    #[test]
+    fn cmake_target_defaults_and_accepts_safe_executable_names() {
+        let default: SolutionConfig =
+            toml::from_str("problem = \"problem\"\nlanguage = \"cpp\"\ntoolchain = \"gcc\"\n")
+                .unwrap();
+        let custom: SolutionConfig = toml::from_str(
+            "problem = \"problem\"\nlanguage = \"cpp\"\ntoolchain = \"gcc\"\nbuild_system = \"cmake\"\ncmake_target = \"solver-v2+fast\"\n",
+        )
+        .unwrap();
+        assert_eq!(default.cmake_target, "ccx_solution");
+        assert_eq!(custom.cmake_target, "solver-v2+fast");
+        assert!(validate_cmake_target(&custom.cmake_target).is_ok());
+    }
+
+    #[test]
+    fn cmake_target_rejects_shell_path_and_builtin_names() {
+        for target in [
+            "",
+            "-solver",
+            "../solver",
+            "solver;touch",
+            "solver $(id)",
+            "all",
+            "clean",
+            "test",
+        ] {
+            assert!(validate_cmake_target(target).is_err(), "{target:?}");
+        }
+        assert!(validate_cmake_target(&"x".repeat(129)).is_err());
     }
 
     #[test]

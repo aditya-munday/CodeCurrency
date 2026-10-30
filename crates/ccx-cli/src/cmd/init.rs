@@ -6,9 +6,9 @@
 
 use crate::cmd::{self, Fixable};
 use crate::context::{
-    default_build_command, validate_build_command, validate_build_customization,
-    validate_run_command, BuildPreset, BuildSystem, CmakeGenerator, SolutionConfig,
-    SOLUTION_MARKER,
+    default_build_command, default_cmake_target, validate_build_command,
+    validate_build_customization, validate_cmake_target, validate_run_command, BuildPreset,
+    BuildSystem, CmakeGenerator, SolutionConfig, SOLUTION_MARKER,
 };
 use crate::Format;
 use ccx_core::capsule::{Language, ToolchainName};
@@ -26,6 +26,7 @@ pub struct InitReport {
     pub target_arch: String,
     pub build_system: String,
     pub cmake_generator: String,
+    pub cmake_target: String,
     pub build_preset: String,
     pub compiler_version: String,
     pub compiler_flags: Vec<String>,
@@ -64,6 +65,7 @@ pub fn run(
     target_arch: &str,
     build_system: &str,
     cmake_generator: &str,
+    cmake_target: &str,
     build_preset: &str,
     compiler_version: Option<&str>,
     compiler_flags: &[String],
@@ -99,6 +101,19 @@ pub fn run(
         return Err(
             Fixable::new(format!("unsupported CMake generator {cmake_generator:?}"))
                 .fix("choose `ninja` or `make`")
+                .into_error(),
+        );
+    }
+    if build_system == "cmake" {
+        validate_cmake_target(cmake_target).map_err(|message| {
+            Fixable::new(message)
+                .fix("choose the executable target name from your CMakeLists.txt")
+                .into_error()
+        })?;
+    } else if cmake_target != default_cmake_target() {
+        return Err(
+            Fixable::new("a CMake target was selected for a non-CMake build")
+                .fix("use `--build-system cmake` or omit `--cmake-target`")
                 .into_error(),
         );
     }
@@ -587,6 +602,7 @@ int main() {
             target_arch: target_arch.to_string(),
             build_system: build_system_value,
             cmake_generator: cmake_generator_value,
+            cmake_target: cmake_target.to_string(),
         })?
     );
     std::fs::write(root.join(SOLUTION_MARKER), config)?;
@@ -597,9 +613,9 @@ int main() {
     written.push(src_name.clone());
     if build_system == "cmake" {
         let cmake_lists = if language == "c" {
-            "cmake_minimum_required(VERSION 3.31)\nproject(CodeCurrencySolution LANGUAGES C)\nset(CMAKE_C_STANDARD 17)\nset(CMAKE_C_STANDARD_REQUIRED ON)\nadd_executable(ccx_solution main.c)\n"
+            format!("cmake_minimum_required(VERSION 3.31)\nproject(CodeCurrencySolution LANGUAGES C)\nset(CMAKE_C_STANDARD 17)\nset(CMAKE_C_STANDARD_REQUIRED ON)\nadd_executable({cmake_target} main.c)\n")
         } else {
-            "cmake_minimum_required(VERSION 3.31)\nproject(CodeCurrencySolution LANGUAGES CXX)\nset(CMAKE_CXX_STANDARD 20)\nset(CMAKE_CXX_STANDARD_REQUIRED ON)\nadd_executable(ccx_solution main.cpp)\n"
+            format!("cmake_minimum_required(VERSION 3.31)\nproject(CodeCurrencySolution LANGUAGES CXX)\nset(CMAKE_CXX_STANDARD 20)\nset(CMAKE_CXX_STANDARD_REQUIRED ON)\nadd_executable({cmake_target} main.cpp)\n")
         };
         std::fs::write(root.join("CMakeLists.txt"), cmake_lists)?;
         written.push("CMakeLists.txt".to_string());
@@ -621,6 +637,7 @@ int main() {
         target_arch: target_arch.to_string(),
         build_system: build_system.to_string(),
         cmake_generator: cmake_generator.to_string(),
+        cmake_target: cmake_target.to_string(),
         build_preset: build_preset.to_string(),
         compiler_version: compiler_version
             .unwrap_or(pinned_toolchain.version.as_str())
@@ -649,6 +666,7 @@ int main() {
             println!("  build system {}", report.build_system);
             if report.build_system == "cmake" {
                 println!("  generator {}", report.cmake_generator);
+                println!("  target    {}", report.cmake_target);
             }
             println!("  preset    {}", report.build_preset);
             if !report.compiler_flags.is_empty() {

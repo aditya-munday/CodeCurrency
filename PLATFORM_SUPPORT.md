@@ -54,11 +54,13 @@ under `build_tools` in `docker/toolchains.lock.json` and checked by `ccx doctor`
 
 C and C++ solutions can use direct compiler invocation, CMake with Ninja or
 Unix Makefiles, or a custom argv template using the selected pinned compiler.
-`ccx init --build-system cmake` creates a minimal CMake project
-with the required `ccx_solution` target; `--cmake-generator make` selects GNU
-Make. CMake runs with network access disabled and its build tree lives in the
-container's temporary scratch filesystem. The capsule records the exact
-configure and build recipe along with the CMakeLists source hash.
+`ccx init --build-system cmake` creates a minimal CMake project with the
+`ccx_solution` target by default. Pass `--cmake-target <name>` to scaffold a
+different executable target, or set `cmake_target` in `ccx.toml` to match an
+existing project. `--cmake-generator make` selects GNU Make. CMake runs with
+network access disabled and its build tree lives in the container's temporary
+scratch filesystem. The capsule records the exact configure and build recipe
+along with the CMakeLists and `ccx.toml` source hashes.
 
 `ccx matrix` runs the selected pinned compiler profiles and optimization levels
 against one shared problem, size, and seed, producing a capsule for every

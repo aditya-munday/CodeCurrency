@@ -35,7 +35,9 @@ target/release/ccx init --problem sorted-pair-sum --language cpp --toolchain gcc
 
 For a C or C++ CMake scaffold, pass `--build-system cmake`. Ninja is the
 default generator; pass `--cmake-generator make` to use pinned Unix Makefiles.
-Both generators use tools pinned in the toolchain lock.
+Both generators use tools pinned in the toolchain lock. The scaffold target is
+`ccx_solution` by default; pass `--cmake-target <name>` or set `cmake_target`
+in `ccx.toml` to match an existing CMake executable target.
 
 The default `standard` preset writes the pinned compiler version, Linux target,
 and x86-64 architecture into `ccx.toml`. C and C++ can select GCC 13 or 14 and

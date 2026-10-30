@@ -31,9 +31,9 @@ known gaps in the expanded Phase 1 target:
   not replace native hosted tests. Windows and macOS Docker Desktop integration
   runs remain outstanding; Apple Silicon also needs certified amd64 emulation or
   native arm64 images.
-- CMake builds are currently supported only for C and C++. A project must
-  define an executable target named `ccx_solution`; other target names and
-  custom multi-configuration generators are not supported.
+- CMake builds are currently supported only for C and C++. The selected
+  executable target is configurable through `cmake_target`; multi-configuration
+  generators are not supported.
 - Build artifacts larger than 64 MiB are rejected before transfer from the
   sandbox. Artifact collection uses `O_NOFOLLOW | O_NONBLOCK`, checks that the
   opened path is a regular file, and emits no artifact for a final symlink or

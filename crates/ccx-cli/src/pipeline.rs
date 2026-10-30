@@ -391,8 +391,9 @@ impl<'a> Pipeline<'a> {
             CmakeGenerator::Ninja => "Ninja",
             CmakeGenerator::UnixMakefiles => "Unix Makefiles",
         };
+        let target = &self.sol.cmake_target;
         format!(
-            "cmake -S /src0 -B /work/scratch/cmake -G '{generator}' -DCMAKE_BUILD_TYPE= -DCMAKE_RUNTIME_OUTPUT_DIRECTORY=/work/scratch -DCMAKE_CXX_SCAN_FOR_MODULES=OFF -DCMAKE_{language}_COMPILER={compiler} -DCMAKE_{flags_key}_STANDARD={standard} -DCMAKE_{flags_key}_STANDARD_REQUIRED=ON -DCMAKE_{flags_key}_FLAGS='{compile_flags}' -DCMAKE_EXE_LINKER_FLAGS='{link_flags}' && cmake --build /work/scratch/cmake --target ccx_solution --parallel 1 && cp /work/scratch/ccx_solution /work/scratch/sol"
+            "cmake -S /src0 -B /work/scratch/cmake -G '{generator}' -DCMAKE_BUILD_TYPE= -DCMAKE_RUNTIME_OUTPUT_DIRECTORY=/work/scratch -DCMAKE_CXX_SCAN_FOR_MODULES=OFF -DCMAKE_{language}_COMPILER={compiler} -DCMAKE_{flags_key}_STANDARD={standard} -DCMAKE_{flags_key}_STANDARD_REQUIRED=ON -DCMAKE_{flags_key}_FLAGS='{compile_flags}' -DCMAKE_EXE_LINKER_FLAGS='{link_flags}' && cmake --build /work/scratch/cmake --target {target} --parallel 1 && cp /work/scratch/{target} /work/scratch/sol"
         )
     }
 

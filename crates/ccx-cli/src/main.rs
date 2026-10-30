@@ -65,6 +65,8 @@ pub enum Command {
         build_system: String,
         #[arg(long, default_value = "ninja", value_parser = ["ninja", "make"])]
         cmake_generator: String,
+        #[arg(long = "cmake-target", default_value = "ccx_solution")]
+        cmake_target: String,
         #[arg(long, default_value = "standard", value_parser = ["standard", "custom"])]
         build_preset: String,
         #[arg(long)]
@@ -263,6 +265,7 @@ fn run(cli: &Cli) -> anyhow::Result<()> {
             dir,
             build_system,
             cmake_generator,
+            cmake_target,
             build_preset,
             compiler_version,
             compiler_flags,
@@ -278,6 +281,7 @@ fn run(cli: &Cli) -> anyhow::Result<()> {
             target_arch,
             build_system,
             cmake_generator,
+            cmake_target,
             build_preset,
             compiler_version.as_deref(),
             compiler_flags,

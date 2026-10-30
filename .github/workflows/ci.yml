@@ -69,7 +69,7 @@ jobs:
       - run: scripts/safety-suite.sh
       - run: scripts/test-problem-suites.sh
       - run: python3 scripts/test-experiment.py target/release/ccx
-      - run: target/release/ccx init --problem sorted-pair-sum --language cpp --toolchain gcc --build-system cmake --dir arena/cmake-ci --format json
+      - run: target/release/ccx init --problem sorted-pair-sum --language cpp --toolchain gcc --build-system cmake --cmake-target phase1_cmake_solution --dir arena/cmake-ci --format json
       - run: target/release/ccx build --dir arena/cmake-ci --format json
       - run: target/release/ccx init --problem sorted-pair-sum --language cpp --toolchain gcc --build-system custom --dir arena/custom-command-ci --run-command-arg env --run-command-arg CCX_RUN=1 --run-command-arg '{binary}' --run-command-arg '{args}' --format json
       - run: cp arena/good/main.cpp arena/custom-command-ci/main.cpp
