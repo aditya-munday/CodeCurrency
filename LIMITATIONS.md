@@ -103,10 +103,11 @@ known gaps in the expanded Phase 1 target:
   C++, Rust, D, Zig, and Odin; Go remained diagnostic because its deterministic
   counters exceeded the 0.01% within-host threshold. All ten current
   harness-0.18.0 single- and multi-file language capsules replayed with
-  deterministic metrics matching on the local WSL2 host. The successful hosted
-  run predates schema 15's raw-observation checks, which still need hosted
-  verification. These are hosted VMs, not three bare-metal CPU models, and do
-  not certify every CPU microarchitecture.
+  deterministic metrics matching on the local WSL2 host. The schema-15 hosted
+  run passed raw-sample validation and exact deterministic sample-vector
+  comparison for the six strictly gated profiles on Ubuntu 22.04, 24.04, and
+  26.04. These are hosted VMs, not three bare-metal CPU models, and do not
+  certify every CPU microarchitecture.
 - Paired wall-clock samples compare every solution with the problem's C++
   reference. For Rust, D, Zig, Odin, and Go this is cross-language context, not
   a same-language ranking signal. Wall-clock remains indicative and noisy; the

@@ -260,6 +260,20 @@ The capsule keeps the raw observations and remains ineligible for ranking under
 the 0.01% gate; this one-host sample does not establish a cause or a
 cross-machine result.
 
+The diagnostic profile [go-preemption-control](arena/go-preemption-control/ccx.toml)
+sets `GODEBUG=randautoseed=0,asyncpreemptoff=1`; its schema-15 capsule is
+[replayable](arena/go-preemption-control/capsule.phase1.v0.19.json). On the
+same problem, size, seed, and host, its 20-run instruction spread was 0.5787%,
+while cache-miss spread was 5.4731% and branch-miss spread was 0.3351%. These
+remain outside the 0.01% rankability tolerance and the cache and branch spreads
+increased from the default Go sample. The profile passed all 15 public and
+hidden test cases and replayed with deterministic metrics matching. This
+separate local sample is diagnostic evidence, not a controlled cross-machine
+comparison. Go documents `asyncpreemptoff=1` as disabling signal-based
+asynchronous goroutine preemption, which can delay scheduling and garbage
+collection ([runtime documentation](https://go.dev/src/runtime/extern.go)); it
+therefore remains an opt-in diagnostic profile rather than the default.
+
 A current GCC C++ measurement at size `naive`, seed `1`, and twenty fresh-process
 runs is stored as [capsule.phase1.v0.18.json](arena/naive/capsule.phase1.v0.18.json).
 Its matching optimized run is [here](arena/good/capsule.phase1.v0.18.json).
@@ -292,7 +306,8 @@ samples. Current replay requires the capsule's harness version. The refreshed
 0.18.0 capsules all replayed with `deterministic_match: true` on the local
 host. The latest completed three-runner CI workflow also passed its hosted
 cross-machine comparison and replay for six gated profiles under harness
-0.18.0. The three-host CI job measures seven
+0.19.0, including raw-sample validation and exact deterministic vector
+comparison. The three-host CI job measures seven
 profiles: C and C++ with GCC, Rust, D with GDC, Zig, Odin, and Go. Its strict
 cross-machine comparison currently gates C, C++, Rust, D, Zig, and Odin. Go
 measurements are retained as diagnostic artifacts because their instruction
@@ -330,8 +345,9 @@ checks. The comparison job then rebuilds the pinned images and replays one
 capsule for each strictly gated profile against its local image, which checks
 that environment fingerprints permit real cross-host replay. This checks
 independent hosted runner environments, not three bare-metal CPU models. The
-successful run used harness 0.18.0; schema-15 raw-observation checks remain
-unverified until this schema change passes the hosted workflow.
+schema-15 raw-observation gate passed in [hosted CI run 40921272991](https://github.com/aditya-munday/CodeCurrency/actions/runs/40921272991)
+on 2026-10-29 for commit `85bb71a`. This result covers hosted virtual machines
+and does not establish repeatability on three bare-metal CPU models.
 
 The schema-11 golden fixture at
 `crates/ccx-core/tests/fixtures/capsule-v11.json` records a local GCC run at

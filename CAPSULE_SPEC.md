@@ -328,9 +328,11 @@ exact equality.
 Run counts range from 2 to 100; Go capsules require at least 20 runs because
 its current fresh-process counter spread is wider. The latest completed
 hosted three-runner gate passed for C, C++, Rust, D, Zig, and Odin under
-harness 0.18.0; Go remains diagnostic because its samples exceed the
-within-host tolerance. Schema-15 raw-sample validation and vector comparison
-still need a hosted run before they can be claimed as verified.
+harness 0.19.0. It validated each capsule's raw samples and summaries and
+confirmed exact deterministic sample-vector agreement across the three hosted
+Ubuntu runners. Go remains diagnostic because its samples exceed the
+within-host tolerance. These hosted runners do not establish repeatability
+across three bare-metal CPU models.
 
 ## 14. `build_repeatability`
 
